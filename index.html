@@ -581,22 +581,23 @@ function rest() {
   updateUI();
 }
 
-function pulseCard(id, tempText) {
+function pulseCard(id, tempText, origText) {
   const el = document.getElementById(id);
   if (!el) return;
-  const valEl = el.querySelector('.stat-value') || el;
-  const orig = valEl.textContent;
-  const origColor = valEl.style.color;
-  valEl.textContent = tempText;
-  valEl.style.color = '#EF9F27';
-  el.classList.remove('card-pulse');
-  void el.offsetWidth;
-  el.classList.add('card-pulse');
+  el.textContent = tempText;
+  el.style.color = '#EF9F27';
+  el.style.transition = 'none';
+  const card = el.closest('.stat-card');
+  if (card) {
+    card.classList.remove('card-pulse');
+    void card.offsetWidth;
+    card.classList.add('card-pulse');
+  }
   setTimeout(() => {
-    valEl.textContent = orig;
-    valEl.style.color = origColor;
-    el.classList.remove('card-pulse');
-  }, 620);
+    el.textContent = origText;
+    el.style.color = '';
+    if (card) card.classList.remove('card-pulse');
+  }, 650);
 }
 
 function levelUp() {
@@ -611,9 +612,9 @@ function levelUp() {
 
   // 스탯 카드 펄스
   setTimeout(() => {
-    pulseCard('stat-lv',  `Lv.${state.level} ▲`);
-    pulseCard('stat-atk', `+${atkUp} ▲`);
-    pulseCard('stat-stage', `HP+${hpUp} ▲`);
+    pulseCard('stat-lv',  `▲ ${state.level}`, state.level);
+    pulseCard('stat-atk', `▲ +${atkUp}`, state.atk);
+    pulseCard('stat-stage', `▲ HP+${hpUp}`, document.getElementById('stat-stage').textContent);
   }, 50);
 
   // 화면 플래시
