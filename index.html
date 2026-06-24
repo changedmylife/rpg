@@ -67,20 +67,17 @@ document.currentScript.after(link);
   button:hover { background: #f0ede6; }
   button:active { transform: scale(0.98); }
   button:disabled { opacity: 0.4; cursor: default; }
-  @keyframes floatUp {
-    0%   { opacity:1; transform: translateY(0); }
-    100% { opacity:0; transform: translateY(-40px); }
+  @keyframes cardPulse {
+    0%   { transform:scale(1);    background:#f0ede6; color:var(--color-text-primary); }
+    40%  { transform:scale(1.12); background:#FAEEDA; color:#BA7517; }
+    100% { transform:scale(1);    background:#f0ede6; color:var(--color-text-primary); }
   }
   @keyframes flashGold {
-    0%   { background: rgba(239,159,39,0); }
-    30%  { background: rgba(239,159,39,0.25); }
-    100% { background: rgba(239,159,39,0); }
+    0%   { box-shadow: 0 0 0px rgba(239,159,39,0); }
+    40%  { box-shadow: 0 0 18px rgba(239,159,39,0.6); }
+    100% { box-shadow: 0 0 0px rgba(239,159,39,0); }
   }
-  .float-label {
-    position:absolute; font-size:13px; font-weight:500; color:#EF9F27;
-    pointer-events:none; animation: floatUp 0.9s ease-out forwards;
-    white-space:nowrap; z-index:99;
-  }
+  .card-pulse { animation: cardPulse 0.6s ease-out forwards; }
   .level-flash { animation: flashGold 0.7s ease-out forwards; }
   #combat-panel { display:none; background:#fff; border:0.5px solid #ddd; border-radius:12px; padding:12px; margin-bottom:10px; }
   #combat-panel .enemy-name { font-size:15px; font-weight:500; color:#222; margin-bottom:6px; }
@@ -584,18 +581,22 @@ function rest() {
   updateUI();
 }
 
-function spawnFloat(anchorId, text) {
-  const anchor = document.getElementById(anchorId);
-  if (!anchor) return;
-  const rect = anchor.getBoundingClientRect();
-  const gameRect = document.getElementById('game').getBoundingClientRect();
-  const el = document.createElement('div');
-  el.className = 'float-label';
-  el.textContent = text;
-  el.style.left = (rect.left - gameRect.left + rect.width / 2) + 'px';
-  el.style.top  = (rect.top  - gameRect.top) + 'px';
-  document.getElementById('game').appendChild(el);
-  setTimeout(() => el.remove(), 950);
+function pulseCard(id, tempText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const valEl = el.querySelector('.stat-value') || el;
+  const orig = valEl.textContent;
+  const origColor = valEl.style.color;
+  valEl.textContent = tempText;
+  valEl.style.color = '#EF9F27';
+  el.classList.remove('card-pulse');
+  void el.offsetWidth;
+  el.classList.add('card-pulse');
+  setTimeout(() => {
+    valEl.textContent = orig;
+    valEl.style.color = origColor;
+    el.classList.remove('card-pulse');
+  }, 620);
 }
 
 function levelUp() {
@@ -608,12 +609,11 @@ function levelUp() {
   state.atk += atkUp;
   log(`✨ 레벨 업! Lv.${state.level} — HP+${hpUp}, 공격+${atkUp}`, 'rebirth');
 
-  // 화살표 애니메이션
+  // 스탯 카드 펄스
   setTimeout(() => {
-    spawnFloat('stat-atk', `▲ +${atkUp}`);
-    spawnFloat('stat-lv',  `▲ Lv.${state.level}`);
-    // HP바 위에도
-    spawnFloat('hp-text',  `▲ +${hpUp}`);
+    pulseCard('stat-lv',  `Lv.${state.level} ▲`);
+    pulseCard('stat-atk', `+${atkUp} ▲`);
+    pulseCard('stat-stage', `HP+${hpUp} ▲`);
   }, 50);
 
   // 화면 플래시
