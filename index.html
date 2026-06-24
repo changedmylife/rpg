@@ -67,6 +67,21 @@ document.currentScript.after(link);
   button:hover { background: #f0ede6; }
   button:active { transform: scale(0.98); }
   button:disabled { opacity: 0.4; cursor: default; }
+  @keyframes floatUp {
+    0%   { opacity:1; transform: translateY(0); }
+    100% { opacity:0; transform: translateY(-40px); }
+  }
+  @keyframes flashGold {
+    0%   { background: rgba(239,159,39,0); }
+    30%  { background: rgba(239,159,39,0.25); }
+    100% { background: rgba(239,159,39,0); }
+  }
+  .float-label {
+    position:absolute; font-size:13px; font-weight:500; color:#EF9F27;
+    pointer-events:none; animation: floatUp 0.9s ease-out forwards;
+    white-space:nowrap; z-index:99;
+  }
+  .level-flash { animation: flashGold 0.7s ease-out forwards; }
   #combat-panel { display:none; background:#fff; border:0.5px solid #ddd; border-radius:12px; padding:12px; margin-bottom:10px; }
   #combat-panel .enemy-name { font-size:15px; font-weight:500; color:#222; margin-bottom:6px; }
   #combat-panel .bars { margin-bottom:8px; }
@@ -79,7 +94,7 @@ document.currentScript.after(link);
 </style>
 </head>
 <body>
-<div id="game">
+<div id="game" style="position:relative;">
   <div id="race-banner">
     <div class="race-icon" id="race-icon">🧑</div>
     <div class="race-info">
@@ -569,6 +584,20 @@ function rest() {
   updateUI();
 }
 
+function spawnFloat(anchorId, text) {
+  const anchor = document.getElementById(anchorId);
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const gameRect = document.getElementById('game').getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'float-label';
+  el.textContent = text;
+  el.style.left = (rect.left - gameRect.left + rect.width / 2) + 'px';
+  el.style.top  = (rect.top  - gameRect.top) + 'px';
+  document.getElementById('game').appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
 function levelUp() {
   state.level++;
   state.xp -= state.xpNext;
@@ -578,6 +607,21 @@ function levelUp() {
   state.hp = Math.min(state.maxHp, state.hp + hpUp);
   state.atk += atkUp;
   log(`✨ 레벨 업! Lv.${state.level} — HP+${hpUp}, 공격+${atkUp}`, 'rebirth');
+
+  // 화살표 애니메이션
+  setTimeout(() => {
+    spawnFloat('stat-atk', `▲ +${atkUp}`);
+    spawnFloat('stat-lv',  `▲ Lv.${state.level}`);
+    // HP바 위에도
+    spawnFloat('hp-text',  `▲ +${hpUp}`);
+  }, 50);
+
+  // 화면 플래시
+  const game = document.getElementById('game');
+  game.classList.remove('level-flash');
+  void game.offsetWidth;
+  game.classList.add('level-flash');
+  setTimeout(() => game.classList.remove('level-flash'), 700);
 }
 
 const BOSSES = [
