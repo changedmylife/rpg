@@ -482,7 +482,7 @@ function startHunt() {
   combat = {
     m, maxEnemyHp, enemyHp: maxEnemyHp,
     baseXp: (m.tier * 4) + rand(3, 8) + state.level,
-    defending: false, stunned: false,
+    defending: false, stunned: 0,
     poisonTurns: 0, fearTurns: 0,
     spiritShield: false, spiritShieldTurns: 0,
     elfCharged: false, skillCooldown: 0,
@@ -595,14 +595,14 @@ function combatAction(action) {
 
   // ── 방어 자세 무너뜨리기 ──
   if (action === 'defend' && Math.random() < 0.2) {
-    combat.stunned = true;
-    log(`  💥 자세 무너뜨리기! 다음 턴 적 행동 불가`, 'rebirth');
+    combat.stunned = 2;
+    log(`  💥 자세 무너뜨리기! 2턴 적 행동 불가`, 'rebirth');
   }
 
   // ── 적 행동 ──
-  if (combat.stunned) {
-    log(`  💤 적이 비틀거린다... (행동 불가)`);
-    combat.stunned = false;
+  if (combat.stunned > 0) {
+    log(`  💤 적이 비틀거린다... (기절 ${combat.stunned}턴 남음)`);
+    combat.stunned--;
   } else if (combat.isBoss) {
     // 보스 특수 패턴
     const boss = combat.boss;
@@ -623,7 +623,7 @@ function combatAction(action) {
       combat.cursed = true; bossNote = '🌙저주 걸림!';
     }
     if (boss.stage === 6 && Math.random() < 0.3) {
-      combat.stunned = true; bossNote = '⚡낙뢰 스턴!';
+      combat.stunned = 2; bossNote = '⚡낙뢰 스턴! (2턴)';
     }
     if (boss.stage === 7 && Math.random() < 0.4) {
       combat.frozen = true; bossNote = '❄️다음턴 빙결!';
@@ -657,12 +657,7 @@ function combatAction(action) {
         state.hp < state.maxHp * 0.3 ? 'danger' : '');
     }
 
-    // 불굴
-    if (state.hp <= 0 && state.trait?.id === 'undying' && !state.undyingUsed) {
-      state.undyingUsed = true;
-      state.hp = Math.floor(state.maxHp * 0.3);
-      log(`  🛡️ 불굴 발동! HP ${state.hp}로 부활`, 'rebirth');
-    }
+
   } else {
     // 일반 몬스터
     const bigAttackWarned = combat.warnNextTurn;
@@ -711,7 +706,18 @@ function combatAction(action) {
   updateUI();
 
   if (combat.enemyHp <= 0) { endCombat(true); return; }
-  if (state.hp <= 0) { endCombat(false); return; }
+  if (state.hp <= 0) {
+    // 불굴 특성 — 사망 직전 1회 부활
+    if (state.trait?.id === 'undying' && !state.undyingUsed) {
+      state.undyingUsed = true;
+      state.hp = Math.floor(state.maxHp * 0.3);
+      log(`  🛡️ 불굴 발동! HP ${state.hp}로 부활!`, 'rebirth');
+      updateCombatBar();
+      updateUI();
+      return;
+    }
+    endCombat(false); return;
+  }
 }
 
 function endCombat(victory) {
