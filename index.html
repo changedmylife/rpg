@@ -206,7 +206,7 @@ document.currentScript.after(link);
     80%  { background-position: -480px 0px; }
     100% { background-position: 0px 0px; }
   }
-  .boss-sprite { animation: bossIdle 0.9s steps(1) infinite !important; width:80px !important; height:100px !important; }
+  .boss-sprite { animation: bossIdle 0.9s steps(1) infinite !important; width:80px !important; height:100px !important; overflow:hidden !important; background-repeat:no-repeat !important; }
   @keyframes spriteDeath {
     0%   { opacity:1; transform:scale(1); filter:brightness(1); }
     30%  { opacity:1; transform:scale(1.1); filter:brightness(3) saturate(0); }
