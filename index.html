@@ -325,7 +325,7 @@ document.currentScript.after(link);
   #trait-tooltip .tt-desc { color:rgba(255,255,255,0.65); }
   #trait-banner:hover #trait-tooltip,
   #trait-banner:active #trait-tooltip { display: block; }
-  .warn-banner { background:rgba(186,117,23,0.4); color:#FAC775; border:0.5px solid rgba(239,159,39,0.4); border-radius:8px; padding:6px 10px; font-size:12px; font-weight:500; margin-bottom:8px; display:none; }
+  .warn-banner { position:absolute; top:4px; left:8px; right:8px; z-index:10; background:rgba(186,117,23,0.85); color:#FAC775; border:0.5px solid rgba(239,159,39,0.6); border-radius:8px; padding:5px 10px; font-size:12px; font-weight:500; display:none; text-align:center; }
 
   /* ── 상단 HUD ── */
   #top-hud { display:flex; align-items:center; gap:6px; padding:6px 8px; background:rgba(0,0,0,0.65); border-radius:10px; margin-bottom:5px; border:0.5px solid rgba(255,255,255,0.1); }
