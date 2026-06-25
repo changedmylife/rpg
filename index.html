@@ -955,6 +955,9 @@ function combatAction(action) {
     if (id === 'human') {
       const h1 = Math.floor((state.atk + rand(0,5)) * 0.8);
       const h2 = Math.floor((state.atk + rand(0,5)) * 0.8);
+      // 연속 공격 중 버튼 잠금
+      const btnsDouble = document.querySelectorAll('#combat-actions button');
+      btnsDouble.forEach(b => b.disabled = true);
       // 1타 즉시 반영
       combat.enemyHp = Math.max(0, combat.enemyHp - h1);
       log(`  ⚔️ 1타! ${h1} 데미지  적HP ${combat.enemyHp}/${combat.maxEnemyHp}`);
@@ -968,6 +971,9 @@ function combatAction(action) {
         log(`  ⚔️ 2타! ${h2} 데미지  적HP ${combat.enemyHp}/${combat.maxEnemyHp}`);
         updateCombatBar();
         if (sp2) { sp2.classList.add('sprite-hit'); setTimeout(()=>sp2.classList.remove('sprite-hit'), 250); }
+        // 2타 완료 후 버튼 해제
+        btnsDouble.forEach(b => b.disabled = false);
+        updateSkillBtn();
         if (combat.enemyHp <= 0) { endCombat(true); }
       }, 400);
       log(`  ⚔️⚔️ 연속 공격! 총 ${h1+h2} 데미지`);
