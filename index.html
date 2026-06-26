@@ -663,6 +663,11 @@ function getBonusTier(hp, maxHp) {
   return null;
 }
 
+function scrollBattleLogToBottom() {
+  const box = document.getElementById('battle-msg-box');
+  if (box) requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+
 function logDivider() {
   const el = document.getElementById('log');
   const p = document.createElement('p');
@@ -677,7 +682,7 @@ function logDivider() {
       const div = document.createElement('span');
       div.className = 'battle-msg-divider';
       bm.appendChild(div);
-      bm.scrollTop = bm.scrollHeight;
+      scrollBattleLogToBottom();
     }
   }
 }
@@ -704,7 +709,7 @@ function log(msg, cls='') {
       else if (cls === 'highlight') span.style.color = '#fff';
       bm.appendChild(span);
       while (bm.children.length > 8) bm.removeChild(bm.firstChild);
-      bm.scrollTop = bm.scrollHeight;
+      scrollBattleLogToBottom();
     }
   }
 }
@@ -865,6 +870,7 @@ function calcEnemyAtk(m) {
   if (race.magicResist && m.type === '마법') { dmg = Math.floor(dmg * 0.6); }
   if (race.earthDefense) dmg = Math.max(1, dmg - getEarthDefense());
   if (hasTrait('instinct') && m.type === '물리') dmg = Math.floor(dmg * 1.1);
+  if (hasTrait('guard')) dmg = Math.floor(dmg * (combat?.defending ? 0.8 : 0.9));
   if (combat?.defending) dmg = Math.floor(dmg * 0.4);
   if (combat?.spiritShield) dmg = Math.floor(dmg * 0.4);
   if (combat?.fearTurns > 0) dmg = Math.floor(dmg * 0.8);
@@ -1145,6 +1151,42 @@ function applyBossAttack() {
   if (boss.stage === 7 && Math.random() < 0.4) { combat.frozen = true; bossNote = '❄️다음턴 빙결!'; }
   if (boss.stage === 8) { const l = Math.floor(bossAtk * 0.5); combat.enemyHp = Math.min(bossMaxHp, combat.enemyHp + l); bossNote = `☠️흡혈 +${l}HP`; }
   if (boss.stage === 9 && Math.random() < 0.5) { bossAtk = Math.floor(bossAtk * 1.5); bossNote = '🌌레이저!'; }
+  if (boss.stage === 10) {
+    // 페이즈 관리
+    if (!combat.eclipsePhase) combat.eclipsePhase = 1;
+    const hpPct = combat.enemyHp / combat.bossMaxHp;
+    const newPhase = hpPct > 0.6 ? 1 : hpPct > 0.3 ? 2 : 3;
+    if (newPhase > combat.eclipsePhase) {
+      combat.eclipsePhase = newPhase;
+      if (newPhase === 2) log(`  🌑 이클립스 퀸의 봉인이 풀린다...!`, 'danger');
+      if (newPhase === 3) log(`  💀 종말이 시작된다!!!`, 'danger');
+    }
+    // Phase 3: 기본 공격력 1.2배
+    if (combat.eclipsePhase === 3) bossAtk = Math.floor(bossAtk * 1.2);
+    // 특수기 풀 구성
+    const eclPool = ['curse', 'lightning_freeze', 'laser'];
+    if (combat.eclipsePhase >= 2) eclPool.push('flame');
+    if (combat.eclipsePhase === 3) { eclPool.push('vampire'); eclPool.push('mirror'); }
+    // 페이즈별 픽 수, 랜덤 선택
+    const pickCount = combat.eclipsePhase === 1 ? 1 : 2;
+    const chosen = [...eclPool].sort(() => Math.random() - 0.5).slice(0, pickCount);
+    for (const s of chosen) {
+      if (s === 'curse' && Math.random() < 0.4) { combat.cursed = true; bossNote += ' 🌙저주!'; }
+      if (s === 'lightning_freeze') {
+        const useFreeze = combat.eclipsePhase >= 2 && Math.random() < 0.5;
+        if (useFreeze) { if (Math.random() < 0.4) { combat.frozen = true; bossNote += ' ❄️빙결!'; } }
+        else { if (Math.random() < 0.3) { combat.stunned = 2; bossNote += ' ⚡낙뢰!'; } }
+      }
+      if (s === 'laser' && Math.random() < 0.3) { bossAtk = Math.floor(bossAtk * 1.5); bossNote += ' 🌌레이저!'; }
+      if (s === 'flame' && Math.random() < 0.4) {
+        const fd = Math.floor(state.maxHp * 0.04);
+        state.hp = Math.max(0, state.hp - fd);
+        bossNote += ` 🔥화염장판-${fd}`;
+      }
+      if (s === 'vampire') { combat.eclipseVampire = true; bossNote += ' 🩸흡혈!'; }
+      if (s === 'mirror' && Math.random() < 0.3) { combat.eclipseMirrorReady = true; bossNote += ' 👥분신!'; }
+    }
+  }
   const bigWarned = combat.warnNextTurn;
   combat.warnNextTurn = Math.random() < 0.25;
   if (bigWarned) { bossAtk = Math.floor(bossAtk * 2.5); bossNote = '💥강공격! ' + bossNote; }
@@ -1156,6 +1198,7 @@ function applyBossAttack() {
     bossAtk = Math.floor(bossAtk * 0.4);
   }
   if (hasTrait('instinct')) bossAtk = Math.floor(bossAtk * 1.1);
+  if (hasTrait('guard')) bossAtk = Math.floor(bossAtk * (combat.defending ? 0.8 : 0.9));
   if (race.physResist) bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
   if (race.magicResist) bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
   if (race.earthDefense) bossAtk = Math.max(1, bossAtk - getEarthDefense());
@@ -1168,6 +1211,13 @@ function applyBossAttack() {
     if (combat.defending && RACES[state.raceIdx].defenseLeech && Math.random() < 0.5) {
       state.hp = Math.min(state.maxHp, state.hp + bossAtk);
       log(`  💜 방어 흡수! HP +${bossAtk} 회복`, 'rebirth');
+    }
+    // 이클립스 퀸 흡혈
+    if (combat.eclipseVampire) {
+      const vHeal = Math.floor(bossAtk * 0.2);
+      combat.enemyHp = Math.min(combat.bossMaxHp, combat.enemyHp + vHeal);
+      log(`  🩸 종말의 흡혈 — 보스 HP +${vHeal}`, 'system');
+      combat.eclipseVampire = false;
     }
   }
 }
@@ -1186,6 +1236,7 @@ function combatAction(action) {
     const div = document.createElement('span');
     div.className = 'battle-msg-divider';
     bm.appendChild(div);
+    scrollBattleLogToBottom();
   }
 
   // ── 선공 몬스터: 적이 먼저 ──
@@ -1223,6 +1274,13 @@ function combatAction(action) {
     if (combat.isBoss && hasTrait('bossKill')) atk = Math.floor(atk * 1.5);
     const curseResult = applyCurseDamage(atk);
     atk = curseResult.dmg;
+    // 분신 체크 (보스 2: 50% 랜덤 / 보스 10: eclipseMirrorReady 플래그)
+    let mirrorDodged = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
+    if (!mirrorDodged && combat.isBoss && combat.boss.stage === 10 && combat.eclipseMirrorReady) {
+      combat.eclipseMirrorReady = false;
+      mirrorDodged = true;
+    }
+    if (mirrorDodged) atk = 0;
     combat.enemyHp = Math.max(0, combat.enemyHp - atk);
     // 히트 이펙트
     const sp = document.getElementById('enemy-sprite-anim');
@@ -1239,8 +1297,10 @@ function combatAction(action) {
       scheduleCombat(520, actionToken, () => { eff.style.display = 'none'; });
     }
     const eName = combat.isBoss ? combat.boss.name : combat.m.name;
-    let msg = `  ⚔️ 공격 ${atk}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`;
-    if (hasTrait('vampire')) {
+    let msg = mirrorDodged
+      ? `  👥 분신! 피해 무효!  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`
+      : `  ⚔️ 공격 ${atk}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`;
+    if (!mirrorDodged && hasTrait('vampire')) {
       const leech = Math.floor(atk * 0.3);
       state.hp = Math.min(state.maxHp, state.hp + leech);
       msg += ` 🩸+${leech}`;
@@ -1270,9 +1330,15 @@ function combatAction(action) {
       // 연속 공격 중 입력 차단 플래그
       combat.comboLock = true;
       // 1타 즉시 반영
+      let mirror1 = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
+      if (!mirror1 && combat.isBoss && combat.boss.stage === 10 && combat.eclipseMirrorReady) {
+        combat.eclipseMirrorReady = false;
+        mirror1 = true;
+      }
+      if (mirror1) h1 = 0;
       combat.enemyHp = Math.max(0, combat.enemyHp - h1);
       const eName1 = combat.isBoss ? combat.boss.name : combat.m.name;
-      log(`  ⚔️ 1타! ${h1} 데미지${curseNote}  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}`);
+      log(mirror1 ? `  👥 1타! 분신 — 피해 무효!  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 1타! ${h1} 데미지${curseNote}  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}`);
       updateCombatBar();
       const sp2 = document.getElementById('enemy-sprite-anim');
       if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
@@ -1289,9 +1355,11 @@ function combatAction(action) {
       }
       // 2타 딜레이 후 반영
       scheduleCombat(400, actionToken, () => {
+        const mirror2 = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
+        if (mirror2) h2 = 0;
         combat.enemyHp = Math.max(0, combat.enemyHp - h2);
         const eName2 = combat.isBoss ? combat.boss.name : combat.m.name;
-        log(`  ⚔️ 2타! ${h2} 데미지${curseNote}  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}`);
+        log(mirror2 ? `  👥 2타! 분신 — 피해 무효!  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 2타! ${h2} 데미지${curseNote}  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}`);
         updateCombatBar();
         if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
         const eff2 = document.getElementById(slashEffId);
@@ -1727,4 +1795,3 @@ setTimeout(() => {
 </script>
 </body>
 </html>
-
