@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -183,6 +183,10 @@ document.currentScript.after(link);
     transform: scaleX(-1);
   }
   .sprite-hit { animation: enemyHit 0.25s ease-out !important; }
+  @keyframes bossBreathe {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(1px) scale(1.035, 0.985); }
+  }
   @keyframes bossIdle {
     0%   { background-position: 0px 0px; }
     20%  { background-position: -80px 0px; }
@@ -566,88 +570,19 @@ document.currentScript.after(link);
 
 
 
+<script src="assets/balance_data.js"></script>
 <script>
-const RACES = [
-  { id:'human',   icon:'🧑', name:'인간',
-    desc:'물리 공격 가능. 디폴트 종족.',
-    traits:'물리 공격 / 특수 효과 없음',
-    hp:30, atk:10,
-    canMagic:false, physResist:false, magicWeak:false, fullRestoreOnce:false, canDodge:false, earthDefense:false,
-    skill:{ name:'연속 공격', icon:'⚔️⚔️', desc:'2회 연속 타격 (각 80% 데미지)' },
-    deathMsg:'흑마법사의 저주에 쓰러졌다...', deathEffect:'어둠의 기운이 몸을 감싼다.' },
-  { id:'skeleton',icon:'💀', name:'스켈레톤',
-    desc:'물리 내성 / 마법에 취약.',
-    traits:'물리 공격 / 물리 내성(피해 40% 감소) / 마법 피해 150%',
-    hp:22, atk:14,
-    canMagic:false, physResist:true, magicWeak:true, fullRestoreOnce:false, canDodge:false, earthDefense:false,
-    skill:{ name:'공포', icon:'💀', desc:'적 공격력 2턴 20% 감소' },
-    deathMsg:'드래곤에게 산채로 삼켜졌다...', deathEffect:'뼈가 소화되기 전 의식이 깜빡인다.' },
-  { id:'poop',    icon:'💩', name:'응아 몬스터',
-    desc:'마법 공격 / 휴식 풀회복 / 마법 내성 40% / 방어 시 50% 확률 회복.',
-    traits:'마법 공격 가능 / 휴식 풀회복 / 마법 피해 40% 감소 / 독 6턴 / 방어 흡수',
-    hp:18, atk:8,
-    canMagic:true, physResist:false, magicWeak:false, fullRestoreOnce:true, canDodge:false, earthDefense:false, magicResist:true, defenseLeech:true,
-    skill:{ name:'독액', icon:'☠️', desc:'6턴 지속 피해 (매 턴 누적 증가, 최대HP × 턴수 × 5%)' },
-    deathMsg:'너무 강한 충격에 산산조각났다...', deathEffect:'흙이 몸을 부드럽게 흡수한다.' },
-  { id:'spirit',  icon:'🌿', name:'대지의 정령',
-    desc:'물리 공격 / HP 낮을수록 방어 증가.',
-    traits:'물리 공격 / HP 50% 이하→방어+3 / 25% 이하→방어+7 / 10% 이하→방어+12',
-    hp:50, atk:6,
-    canMagic:false, physResist:false, magicWeak:false, fullRestoreOnce:false, canDodge:false, earthDefense:true,
-    skill:{ name:'대지 방벽', icon:'🌿', desc:'3턴간 받는 피해 60% 감소' },
-    deathMsg:'정령의 힘이 다 소진되었다...', deathEffect:'주변 엘프들이 손을 내밀어 온다.' },
-  { id:'elf',     icon:'🧝', name:'엘프',
-    desc:'마법 공격 / 50% 확률로 회피 / 휴식 3회.',
-    traits:'마법 공격 가능 / 전투마다 50% 확률 회피 / 휴식 3회',
-    hp:26, atk:8,
-    canMagic:true, physResist:false, magicWeak:false, fullRestoreOnce:false, canDodge:true, earthDefense:false,
-    skill:{ name:'마법 집중', icon:'🔮', desc:'다음 공격 3배 데미지 충전' },
-    deathMsg:'운명의 끝에 다다랐다...', deathEffect:'빛이 되어 흩어졌다가 다시 모인다.' },
-];
-const MONSTERS = [
-  { name:'브램블 울프',        type:'물리', tier:1,  atk:4,  def:0,  traits:['돌진','출혈','무리 사냥'],  desc:'가시 덩굴이 자라는 늑대' },
-  { name:'아이언터스크 보어',  type:'물리', tier:2,  atk:6,  def:3,  traits:['돌진','방어력 높음'],       desc:'철갑 멧돼지' },
-  { name:'스톤쉘 크랩',        type:'물리', tier:3,  atk:5,  def:5,  traits:['방어형','넉백'],            desc:'거대한 암석 게' },
-  { name:'글룸 스토커',        type:'물리', tier:4,  atk:9,  def:0,  traits:['은신','급습'],              desc:'그림자 표범' },
-  { name:'레드혼 스태그',      type:'물리', tier:5,  atk:10, def:1,  traits:['돌격','범위 공격'],         desc:'붉은 뿔 사슴' },
-  { name:'캐리언 리퍼',        type:'물리', tier:6,  atk:12, def:1,  traits:['공중 공격','출혈'],         desc:'시체를 먹는 거대 독수리' },
-  { name:'미스트 클로',        type:'물리', tier:7,  atk:11, def:2,  traits:['회피율 높음'],              desc:'안개 늑대' },
-  { name:'케이브 마울러',      type:'물리', tier:8,  atk:18, def:3,  traits:['느림','강력한 한방'],       desc:'동굴 트롤' },
-  { name:'블러드팽',           type:'물리', tier:9,  atk:16, def:2,  traits:['근접 흡혈'],               desc:'흡혈 박쥐 군주' },
-  { name:'루인 골렘',          type:'물리', tier:10, atk:22, def:10, traits:['보스급','초고방어'],        desc:'폐허의 수호 골렘' },
-  { name:'윌로우 위스프',      type:'마법', tier:1,  atk:5,  def:0,  traits:['화염구','추적탄'],          desc:'떠다니는 영혼불' },
-  { name:'문블룸 페어리',      type:'마법', tier:2,  atk:6,  def:0,  traits:['광역 마법'],               desc:'달빛 요정' },
-  { name:'크리스탈 스프라이트',type:'마법', tier:3,  atk:8,  def:2,  traits:['얼음 마법'],               desc:'수정 정령' },
-  { name:'헥스 크로우',        type:'마법', tier:4,  atk:9,  def:0,  traits:['디버프'],                  desc:'저주 까마귀' },
-  { name:'스타폴 미믹',        type:'마법', tier:5,  atk:11, def:1,  traits:['광선 공격'],               desc:'별빛을 삼킨 미믹' },
-  { name:'머쉬룸 세이지',      type:'마법', tier:6,  atk:10, def:1,  traits:['독구름','지속 피해'],       desc:'독버섯 현자' },
-  { name:'데드우드 드라이어드',type:'마법', tier:7,  atk:13, def:2,  traits:['뿌리 속박'],               desc:'죽은 숲의 정령' },
-  { name:'아스트럴 모스',      type:'마법', tier:8,  atk:15, def:1,  traits:['정신 공격'],               desc:'우주 나방' },
-  { name:'벨벳 위치캣',        type:'마법', tier:9,  atk:17, def:2,  traits:['암흑 마법','순간이동'],     desc:'마녀 고양이' },
-  { name:'에클립스 스펙터',    type:'마법', tier:10, atk:21, def:3,  traits:['그림자 광선'],             desc:'일식의 망령 — 최종 지역' },
-];
+const BALANCE = window.GAME_BALANCE;
+if (!BALANCE) throw new Error('assets/balance_data.js failed to load');
+const { RACES, MONSTERS, TRAITS, BOSSES } = BALANCE;
+const MAX_REST = BALANCE.MAX_REST;
+const DEV_MODE = true;
 
 function pickMonster(playerLevel) {
   const maxTier = Math.min(10, Math.max(1, Math.floor(playerLevel * 0.8) + rand(0, 2)));
   const pool = MONSTERS.filter(m => m.tier <= maxTier);
   return pool[rand(0, pool.length - 1)];
 }
-
-const MAX_REST = 5;
-const DEV_MODE = true;
-
-const TRAITS = [
-  { id:'growth',   icon:'🌱', name:'빠른 성장',   desc:'경험치 +100%',                      },
-  { id:'vampire',  icon:'🩸', name:'흡혈',         desc:'가한 피해의 30% 회복',              },
-  { id:'homebody', icon:'🏠', name:'집돌이',        desc:'휴식 횟수 x2',                     },
-  { id:'bossKill', icon:'🎯', name:'보스 사냥꾼',  desc:'보스 공격력 +50%',                  },
-  { id:'lucky',    icon:'⭐', name:'행운의 별',    desc:'치명타 확률 +15%',                  },
-  { id:'sturdy',   icon:'💪', name:'강인한 육체',  desc:'최대 체력 +50%',                    },
-  { id:'berserk',  icon:'🔥', name:'폭주',          desc:'HP 30% 이하 공격력 +60%',          },
-  { id:'magic',    icon:'🔮', name:'마력 증폭',    desc:'마법 피해 +15%',                    },
-  { id:'instinct', icon:'⚔️', name:'전투 본능',    desc:'근접 피해 +25% / 받는 피해 +10%',  },
-  { id:'undying',  icon:'🛡️', name:'불굴',          desc:'사망 시 1회 부활 (HP 30% 회복)',   },
-];
 
 const MOB_SPRITE_SRC = 'assets/extracted/mob_sprite.png';
 const MOB_IMG = new Image();
@@ -680,6 +615,28 @@ function pickTrait() {
 
 let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false };
 let combat = null; // 현재 전투 상태
+let combatSeq = 0;
+
+function beginCombat(nextCombat) {
+  combat = { ...nextCombat, token: ++combatSeq };
+  return combat;
+}
+
+function isCombatActive(token) {
+  return !!combat && combat.token === token;
+}
+
+function scheduleCombat(delay, token, fn) {
+  return setTimeout(() => {
+    if (isCombatActive(token)) fn();
+  }, delay);
+}
+
+function setCombatButtonsDisabled(disabled, token) {
+  if (token && !isCombatActive(token)) return;
+  document.querySelectorAll('#combat-actions button').forEach(b => { b.disabled = disabled; });
+  if (!disabled) updateSkillBtn();
+}
 
 function updateDevControls() {
   const devControls = document.querySelectorAll('[data-dev-control]');
@@ -920,7 +877,7 @@ function startHunt() {
   const race = RACES[state.raceIdx];
   const maxEnemyHp = (m.atk * 4) + (m.tier * 8) + state.level * 3;
   const hasFirstStrike = Math.random() < 0.2;
-  combat = {
+  beginCombat({
     m, maxEnemyHp, enemyHp: maxEnemyHp,
     baseXp: (m.tier * 4) + rand(3, 8) + state.level,
     defending: false, stunned: 0,
@@ -930,7 +887,7 @@ function startHunt() {
     warnNextTurn: false,
     enemyFirstStrike: hasFirstStrike,
     firstTurn: true,
-  };
+  });
   const typeIcon = m.type === '물리' ? '⚔️' : '✨';
   logDivider();
   log(`${typeIcon} [${m.type} Tier${m.tier}] ${m.name} 출현! — ${m.desc}`, 'highlight');
@@ -954,6 +911,7 @@ function setCombatUI(active) {
   document.getElementById('actions').style.display = (active || showClear) ? 'none' : 'grid';
   updateDevControls();
   if (active) {
+    const combatToken = combat.token;
     const race = RACES[state.raceIdx];
     const typeIcon = combat.m.type === '물리' ? '⚔️' : '✨';
     const enemyDisplayName = combat.isBoss
@@ -968,6 +926,14 @@ function setCombatUI(active) {
       spReset.style.transform = '';
       spReset.style.filter = '';
     }
+    ['attack-effect', 'magic-effect', 'poop-skill-effect'].forEach(id => {
+      const effReset = document.getElementById(id);
+      if (effReset) {
+        effReset.style.display = 'none';
+        effReset.style.animation = 'none';
+      }
+    });
+    setCombatButtonsDisabled(false, combatToken);
     // 보스 스프라이트 canvas 애니메이션
     if (window._bossAnim) { cancelAnimationFrame(window._bossAnim); window._bossAnim = null; }
     const spriteData = combat.isBoss ? combat.boss.sprite : null;
@@ -975,15 +941,40 @@ function setCombatUI(active) {
     if (canvas && canvas.getContext) {
       const ctx = canvas.getContext('2d');
       if (spriteData) {
+        const bossRef = combat.boss;
+        canvas.width = bossRef.spriteCanvasWidth || 80;
+        canvas.height = bossRef.spriteCanvasHeight || 100;
+        canvas.style.width = bossRef.spriteDisplayWidth || '';
+        canvas.style.height = bossRef.spriteDisplayHeight || '';
+        canvas.style.animation = bossRef.spriteBreathe ? 'bossBreathe 1.6s ease-in-out infinite' : '';
         const img = new Image();
         img.onload = () => {
+          if (!isCombatActive(combatToken)) return;
           let frame = 0;
           let last = 0;
-          const FW = 80, FH = 100, FRAMES = combat.boss.spriteFrames || 5, INTERVAL = combat.boss.spriteInterval || 180;
+          const CW = canvas.width, CH = canvas.height;
+          const FRAMES = bossRef.spriteFrames || 5, INTERVAL = bossRef.spriteInterval || 180;
+          const FRAME_SEQUENCE = bossRef.spriteFrameSequence || null;
+          const FW = bossRef.spriteFrameWidth || Math.floor(img.width / FRAMES);
+          const FH = bossRef.spriteFrameHeight || img.height;
+          const CROP_X = bossRef.spriteCropX || 0;
+          const CROP_Y = bossRef.spriteCropY || 0;
+          const SW = FW - CROP_X * 2;
+          const SH = FH - CROP_Y * 2;
+          const SCALE = bossRef.spriteScale || Math.min(CW / FW, CH / FH);
+          const DW = Math.min(CW, FW * SCALE);
+          const DH = Math.min(CH, FH * SCALE);
+          const DX = Math.floor((CW - DW) / 2);
+          const DY = Math.floor((CH - DH) / 2);
           function draw(ts) {
-            if (ts - last > INTERVAL) { frame = (frame+1) % FRAMES; last = ts; }
-            ctx.clearRect(0, 0, FW, FH);
-            ctx.drawImage(img, frame*FW, 0, FW, FH, 0, 0, FW, FH);
+            if (!isCombatActive(combatToken)) return;
+            if (ts - last > INTERVAL) {
+              frame = (frame+1) % (FRAME_SEQUENCE ? FRAME_SEQUENCE.length : FRAMES);
+              last = ts;
+            }
+            const sourceFrame = FRAME_SEQUENCE ? FRAME_SEQUENCE[frame] : frame;
+            ctx.clearRect(0, 0, CW, CH);
+            ctx.drawImage(img, sourceFrame*FW + CROP_X, CROP_Y, SW, SH, DX, DY, DW, DH);
             window._bossAnim = requestAnimationFrame(draw);
           }
           window._bossAnim = requestAnimationFrame(draw);
@@ -994,10 +985,16 @@ function setCombatUI(active) {
         canvas.style.display = 'block';
       } else {
         // 일반 몬스터 canvas 애니메이션
+        canvas.width = 80;
+        canvas.height = 100;
+        canvas.style.width = '';
+        canvas.style.height = '';
+        canvas.style.animation = '';
         canvas.style.display = 'block';
         let frame = 0, last = 0;
         const FW = 80, FH = 100, FRAMES = 5, INTERVAL = 180;
         function drawMob(ts) {
+          if (!isCombatActive(combatToken)) return;
           if (ts - last > INTERVAL) { frame = (frame+1) % FRAMES; last = ts; }
           ctx.clearRect(0, 0, FW, FH);
           if (MOB_IMG.complete) ctx.drawImage(MOB_IMG, frame*FW, 0, FW, FH, 0, 0, FW, FH);
@@ -1006,7 +1003,9 @@ function setCombatUI(active) {
         if (MOB_IMG.complete) {
           window._bossAnim = requestAnimationFrame(drawMob);
         } else {
-          MOB_IMG.onload = () => { window._bossAnim = requestAnimationFrame(drawMob); };
+          MOB_IMG.onload = () => {
+            if (isCombatActive(combatToken)) window._bossAnim = requestAnimationFrame(drawMob);
+          };
         }
       }
     }
@@ -1046,14 +1045,15 @@ function updateCombatBar() {
   warn.style.display = combat.warnNextTurn ? 'block' : 'none';
 }
 
-function applyEnemyAttack(isBossTurn) {
+function applyEnemyAttack(isBossTurn, token) {
+  if (token && !isCombatActive(token)) return;
   if (!combat) return;
   const race = RACES[state.raceIdx];
   const m = combat.m;
 
   // 적이 이미 죽어 있으면 반격 없음
   if (combat.enemyHp <= 0) {
-    endCombat(true); return;
+    endCombat(true, token); return;
   }
 
   if (combat.stunned > 0) {
@@ -1072,7 +1072,11 @@ function applyEnemyAttack(isBossTurn) {
     combat.enemyHp = Math.max(0, combat.enemyHp - poisonDmg);
     combat.poisonTurns--;
     log(`  ☠️ 독 피해 ${poisonDmg} (${combat.poisonTick}턴째, 남은 턴: ${combat.poisonTurns})`);
-    if (combat.enemyHp <= 0) { setTimeout(() => { if(combat) endCombat(true); }, 400); return; }
+    if (combat.enemyHp <= 0) {
+      const poisonToken = combat.token;
+      scheduleCombat(400, poisonToken, () => endCombat(true, poisonToken));
+      return;
+    }
   }
   if (combat.fearTurns > 0) combat.fearTurns--;
   if (combat.spiritShield) {
@@ -1087,7 +1091,7 @@ function applyEnemyAttack(isBossTurn) {
   updateCombatBar();
   updateUI();
 
-  if (combat.enemyHp <= 0) { endCombat(true); return; }
+  if (combat.enemyHp <= 0) { endCombat(true, token); return; }
   if (state.hp <= 0) {
     if (hasTrait('undying') && !state.undyingUsed) {
       state.undyingUsed = true;
@@ -1095,7 +1099,7 @@ function applyEnemyAttack(isBossTurn) {
       log(`  🛡️ 불굴 발동! HP ${state.hp}로 부활!`, 'rebirth');
       updateCombatBar(); updateUI(); return;
     }
-    endCombat(false);
+    endCombat(false, token);
   }
 }
 
@@ -1170,6 +1174,7 @@ function applyBossAttack() {
 
 function combatAction(action) {
   if (!combat || state.dead || combat.comboLock) return;
+  const actionToken = combat.token;
   const m = combat.m;
   const race = RACES[state.raceIdx];
   const MAGIC_RACES = ['poop', 'elf'];
@@ -1187,8 +1192,8 @@ function combatAction(action) {
   if (combat.enemyFirstStrike && combat.firstTurn) {
     combat.firstTurn = false;
     log(`  ⚡ 적 선공!`, 'danger');
-    applyEnemyAttack(false);
-    if (!combat) return; // 전투 종료됐으면 중단
+    applyEnemyAttack(false, actionToken);
+    if (!isCombatActive(actionToken)) return; // 전투 종료됐으면 중단
     combat.defending = (action === 'defend'); // 방어 상태 재설정
   } else {
     combat.firstTurn = false;
@@ -1201,14 +1206,11 @@ function combatAction(action) {
     log(`  ❄️ 빙결! 행동할 수 없다.`, 'danger');
     updateCombatBar();
     updateUI();
-    const btnsFrozen = document.querySelectorAll('#combat-actions button');
-    btnsFrozen.forEach(b => b.disabled = true);
-    setTimeout(() => {
-      if (!combat) return;
-      btnsFrozen.forEach(b => b.disabled = false);
-      updateSkillBtn();
-      applyEnemyAttack(combat.isBoss);
-    }, 350);
+    setCombatButtonsDisabled(true, actionToken);
+    scheduleCombat(350, actionToken, () => {
+      setCombatButtonsDisabled(false, actionToken);
+      applyEnemyAttack(combat.isBoss, actionToken);
+    });
     return;
   }
 
@@ -1224,7 +1226,7 @@ function combatAction(action) {
     combat.enemyHp = Math.max(0, combat.enemyHp - atk);
     // 히트 이펙트
     const sp = document.getElementById('enemy-sprite-anim');
-    if (sp) { sp.classList.add('sprite-hit'); setTimeout(()=>{ if(sp) sp.classList.remove('sprite-hit'); },300); }
+    if (sp) { sp.classList.add('sprite-hit'); scheduleCombat(300, actionToken, () => { sp.classList.remove('sprite-hit'); }); }
     // 공격 이펙트 — 물리/마법 구분
     const effId = isMagicAtkFixed ? 'magic-effect' : 'attack-effect';
     const effAnim = isMagicAtkFixed ? 'magicEffect 0.5s steps(1) forwards' : 'slashEffect 0.5s steps(1) forwards';
@@ -1234,7 +1236,7 @@ function combatAction(action) {
       eff.style.animation = 'none';
       void eff.offsetWidth;
       eff.style.animation = effAnim;
-      setTimeout(() => { if(eff) eff.style.display = 'none'; }, 520);
+      scheduleCombat(520, actionToken, () => { eff.style.display = 'none'; });
     }
     const eName = combat.isBoss ? combat.boss.name : combat.m.name;
     let msg = `  ⚔️ 공격 ${atk}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`;
@@ -1273,41 +1275,37 @@ function combatAction(action) {
       log(`  ⚔️ 1타! ${h1} 데미지${curseNote}  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}`);
       updateCombatBar();
       const sp2 = document.getElementById('enemy-sprite-anim');
-      if (sp2) { sp2.classList.add('sprite-hit'); setTimeout(()=>sp2.classList.remove('sprite-hit'), 250); }
+      if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
       const eff1 = document.getElementById(slashEffId);
-      if (eff1) { eff1.style.display='block'; eff1.style.animation='none'; void eff1.offsetWidth; eff1.style.animation=slashAnim; setTimeout(()=>{ if(eff1) eff1.style.display='none'; }, 520); }
+      if (eff1) { eff1.style.display='block'; eff1.style.animation='none'; void eff1.offsetWidth; eff1.style.animation=slashAnim; scheduleCombat(520, actionToken, () => { eff1.style.display='none'; }); }
       // 1타로 이미 사망 시 즉시 종료
       if (combat.enemyHp <= 0) {
         const spDead = document.getElementById('enemy-sprite-anim');
         if (spDead) { spDead.classList.add('sprite-death'); }
         log(`  💀 ${combat.isBoss ? combat.boss.name : combat.m.name} 쓰러졌다!`, 'rebirth');
         combat.comboLock = false;
-        setTimeout(() => { if(combat) endCombat(true); }, 600);
+        scheduleCombat(600, actionToken, () => endCombat(true, actionToken));
         return;
       }
       // 2타 딜레이 후 반영
-      setTimeout(() => {
-        if (!combat) return;
+      scheduleCombat(400, actionToken, () => {
         combat.enemyHp = Math.max(0, combat.enemyHp - h2);
         const eName2 = combat.isBoss ? combat.boss.name : combat.m.name;
         log(`  ⚔️ 2타! ${h2} 데미지${curseNote}  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}`);
         updateCombatBar();
-        if (sp2) { sp2.classList.add('sprite-hit'); setTimeout(()=>sp2.classList.remove('sprite-hit'), 250); }
+        if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
         const eff2 = document.getElementById(slashEffId);
-        if (eff2) { eff2.style.display='block'; eff2.style.animation='none'; void eff2.offsetWidth; eff2.style.animation=slashAnim; setTimeout(()=>{ if(eff2) eff2.style.display='none'; }, 520); }
+        if (eff2) { eff2.style.display='block'; eff2.style.animation='none'; void eff2.offsetWidth; eff2.style.animation=slashAnim; scheduleCombat(520, actionToken, () => { eff2.style.display='none'; }); }
         combat.comboLock = false;
         if (combat.enemyHp <= 0) {
-          endCombat(true);
+          endCombat(true, actionToken);
         } else {
           // 2타 완료 후 적 반격
-          const btnsC = document.querySelectorAll('#combat-actions button');
-          btnsC.forEach(b => b.disabled = true);
-          setTimeout(() => {
-            if (!combat) return;
-            btnsC.forEach(b => b.disabled = false);
-            updateSkillBtn();
-            applyEnemyAttack(combat.isBoss);
-          }, 350);
+          setCombatButtonsDisabled(true, actionToken);
+          scheduleCombat(350, actionToken, () => {
+            setCombatButtonsDisabled(false, actionToken);
+            applyEnemyAttack(combat.isBoss, actionToken);
+          });
         }
       }, 400);
       log(`  ⚔️⚔️ 연속 공격! 총 ${h1+h2} 데미지${curseNote}`);
@@ -1328,7 +1326,7 @@ function combatAction(action) {
         poopEff.style.animation = 'none';
         void poopEff.offsetWidth;
         poopEff.style.animation = 'poopSkillEffect 0.6s steps(1) forwards';
-        setTimeout(() => { if(poopEff) poopEff.style.display = 'none'; }, 650);
+        scheduleCombat(650, actionToken, () => { poopEff.style.display = 'none'; });
       }
     } else if (id === 'spirit') {
       combat.spiritShield = true;
@@ -1352,10 +1350,10 @@ function combatAction(action) {
       spDead.classList.add('sprite-death');
     }
     log(`  💀 ${combat.isBoss ? combat.boss.name : combat.m.name} 쓰러졌다!`, 'rebirth');
-    setTimeout(() => {
+    scheduleCombat(600, actionToken, () => {
       if (spDead) { spDead.classList.remove('sprite-death'); spDead.style.opacity='1'; }
-      if (combat) endCombat(true);
-    }, 600);
+      endCombat(true, actionToken);
+    });
     return;
   }
 
@@ -1369,23 +1367,23 @@ function combatAction(action) {
   if (combat.comboLock) return;
 
   // ── 적 행동 (딜레이 후) ── 버튼 잠금
-  const btns = document.querySelectorAll('#combat-actions button');
-  btns.forEach(b => b.disabled = true);
-  setTimeout(() => {
-    if (!combat) return;
-    btns.forEach(b => b.disabled = false);
-    updateSkillBtn();
-    applyEnemyAttack(combat.isBoss);
-  }, 350);
+  setCombatButtonsDisabled(true, actionToken);
+  scheduleCombat(350, actionToken, () => {
+    setCombatButtonsDisabled(false, actionToken);
+    applyEnemyAttack(combat.isBoss, actionToken);
+  });
 }
 
-function endCombat(victory) {
+function endCombat(victory, token) {
+  if (token && !isCombatActive(token)) return;
+  if (!combat) return;
   const m = combat.m;
   const isBoss = combat.isBoss;
   const boss = combat.boss;
   const baseXp = combat.baseXp;
   const race = RACES[state.raceIdx];
   combat = null;
+  combatSeq++;
   if (window._bossAnim) { cancelAnimationFrame(window._bossAnim); window._bossAnim = null; }
   setCombatUI(false);
   const skillBtn = document.getElementById('btn-skill');
@@ -1520,39 +1518,6 @@ function levelUp() {
   setTimeout(() => game.classList.remove('level-flash'), 700);
 }
 
-const BOSSES = [
-  { stage:1,  icon:'🌿⚔️', area:'숲의 심장',     name:'브라이어 킹', sprite:'assets/extracted/boss_sprite_01.png',      desc:'거대한 가시 사슴',      hp:137, atk:7, special:'광폭화',   specialDesc:'HP 30% 이하 공격력 2배',
-    deathMsg:'브라이어 킹의 가시 덩굴에 온몸이 꿰뚫렸다...', deathEffect:'숲의 기운이 시신을 감싸며 변화를 일으킨다.',
-    rebirthWeights:[ {id:'poop',w:50},{id:'spirit',w:50} ] },
-  { stage:2,  icon:'🌊🎵', area:'안개의 호수', spriteInterval:350, sprite:'assets/extracted/boss_sprite_02.png', spriteFrames:4,    name:'미러 세이렌',      desc:'물거울 인어',           hp:173, atk:13, special:'분신',     specialDesc:'50% 확률로 피해 무효',
-    deathMsg:'미러 세이렌의 노래에 홀려 호수 깊이 가라앉았다...', deathEffect:'수면에 비친 새로운 모습이 눈에 들어온다.',
-    rebirthWeights:[ {id:'elf',w:50},{id:'spirit',w:50} ] },
-  { stage:3,  icon:'⛰🔩', area:'잊혀진 광산',    name:'아이언 콜로서스',  desc:'고대 채굴 골렘',        hp:219, atk:17, special:'내려찍기', specialDesc:'30% 확률 전체 HP 30% 피해',
-    deathMsg:'아이언 콜로서스의 철권에 광산 깊숙이 매장되었다...', deathEffect:'대지의 압력이 몸을 으스러뜨리며 무언가 새어나온다.',
-    rebirthWeights:[ {id:'spirit',w:100} ] },
-  { stage:4,  icon:'🔥🐉', area:'용암 협곡',      name:'크림슨 와이번',    desc:'붉은 용',               hp:265, atk:18, special:'화염 장판',specialDesc:'매 턴 HP 5% 추가 피해',
-    deathMsg:'크림슨 와이번의 화염에 재가 되었다...', deathEffect:'불씨 속에서 기이한 의식이 피어오른다.',
-    rebirthWeights:[ {id:'poop',w:50},{id:'skeleton',w:50} ] },
-  { stage:5,  icon:'🌙🔮', area:'달빛 숲',        name:'벨벳 위치',        desc:'달의 마녀',             hp:296, atk:25, special:'저주',     specialDesc:'공격력 20% 감소',
-    deathMsg:'벨벳 위치의 저주가 영혼을 갉아먹었다...', deathEffect:'달빛 아래 저주의 문양이 새로운 형태로 각인된다.',
-    rebirthWeights:[ {id:'skeleton',w:100} ] },
-  { stage:6,  icon:'⚡🦅', area:'폭풍 절벽',      name:'템페스트 로크',    desc:'번개 거대 조류',        hp:312, atk:30, special:'낙뢰',     specialDesc:'30% 확률 2턴 스턴',
-    deathMsg:'템페스트 로크의 낙뢰에 절벽 아래로 떨어졌다...', deathEffect:'번개의 잔향이 몸속 깊이 스며들며 변화를 이끈다.',
-    rebirthWeights:[ {id:'skeleton',w:50},{id:'spirit',w:50} ] },
-  { stage:7,  icon:'❄️👑', area:'영원의 설원',    name:'프로스트 마더',    desc:'얼음 여왕',             hp:348, atk:34, special:'빙결',     specialDesc:'40% 확률 다음 공격 무효',
-    deathMsg:'프로스트 마더의 빙결에 설원 속에 봉인되었다...', deathEffect:'얼음이 녹으며 전혀 다른 존재가 깨어난다.',
-    rebirthWeights:[ {id:'skeleton',w:50},{id:'spirit',w:50} ] },
-  { stage:8,  icon:'☠️🌸', area:'망자의 계곡',    name:'데스블룸',         desc:'거대한 죽음의 꽃',      hp:399, atk:38, special:'흡혈',     specialDesc:'피해의 50% 보스 HP 회복',
-    deathMsg:'데스블룸의 꽃잎에 생명력이 완전히 빨려나갔다...', deathEffect:'죽음의 꽃가루가 새로운 씨앗을 심는다.',
-    rebirthWeights:[ {id:'poop',w:50},{id:'spirit',w:50} ] },
-  { stage:9,  icon:'🌌🐲', area:'별의 폐허',      name:'아스트럴 드래곤',  desc:'우주룡',                hp:445, atk:36, special:'레이저',   specialDesc:'50% 확률 피해 1.5배',
-    deathMsg:'아스트럴 드래곤의 우주 레이저에 소멸했다...', deathEffect:'별빛 사이로 의식이 흩어지다 다시 모인다.',
-    rebirthWeights:[ {id:'poop',w:100} ] },
-  { stage:10, icon:'🌑💀', area:'종말의 정원',    name:'이클립스 퀸',      desc:'최종 보스',             hp:468, atk:48, special:'종말',     specialDesc:'매 라운드 특수 공격 혼합',
-    deathMsg:'이클립스 퀸의 종말의 빛에 모든 것이 사라졌다...', deathEffect:'그러나 끝은 또 다른 시작 — 의식이 다시 깜빡인다.',
-    rebirthWeights:[ {id:'poop',w:20},{id:'spirit',w:20},{id:'human',w:20},{id:'elf',w:20},{id:'skeleton',w:20} ] },
-];
-
 function pickRebirthRace(boss) {
   const weights = boss.rebirthWeights;
   const total = weights.reduce((s,w) => s + w.w, 0);
@@ -1578,7 +1543,7 @@ function fightBoss() {
 
   const bossMaxHp = boss.hp;
 
-  combat = {
+  beginCombat({
     isBoss: true,
     boss,
     bossMaxHp,
@@ -1598,7 +1563,7 @@ function fightBoss() {
     skillCooldown: 0,
     warnNextTurn: false,
     rounds: 0,
-  };
+  });
 
   log(``, '');
   logDivider();
@@ -1704,7 +1669,7 @@ function instantKillBoss() {
     endCombat(true);
     return;
   }
-  combat = {
+  beginCombat({
     isBoss: true,
     boss,
     bossMaxHp: boss.hp,
@@ -1712,7 +1677,7 @@ function instantKillBoss() {
     maxEnemyHp: boss.hp,
     m: { name: boss.name, type: '물리', tier: 10, traits: [boss.special] },
     baseXp: 0,
-  };
+  });
   log(`☠️ DEV: ${boss.name} 즉시 처치`, 'system');
   endCombat(true);
 }
@@ -1762,3 +1727,4 @@ setTimeout(() => {
 </script>
 </body>
 </html>
+
