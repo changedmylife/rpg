@@ -660,6 +660,16 @@ function getVampireLeechRate() {
   return Math.max(traitRate, racialRate);
 }
 
+function applyVampireAttackCost() {
+  const race = RACES[state.raceIdx];
+  if (race?.id !== 'vampire') return 0;
+  const cost = Math.max(1, Math.floor(state.maxHp * 0.05));
+  const paid = Math.min(cost, Math.max(0, state.hp - 1));
+  if (paid <= 0) return 0;
+  state.hp -= paid;
+  return paid;
+}
+
 function updateDevControls() {
   const devControls = document.querySelectorAll('[data-dev-control]');
   devControls.forEach(btn => {
@@ -866,14 +876,22 @@ function getEarthDefense() {
   return 0;
 }
 
+function isMagicAttackRace(race) {
+  return !!race?.canMagic;
+}
+
+function isMeleeAttackRace(race) {
+  return !isMagicAttackRace(race);
+}
+
 function calcMyAtk(baseAtk, m) {
   const race = RACES[state.raceIdx];
   let atk = baseAtk;
   if (race.id === 'vampire') atk = Math.floor(atk * (isNight() ? 1.2 : 0.85));
   if (race.canMagic && m.type === '마법') atk = Math.floor(atk * 1.4);
   if (hasTrait('berserk') && state.hp / state.maxHp <= 0.3) atk = Math.floor(atk * 1.6);
-  if (hasTrait('instinct') && m.type === '물리') atk = Math.floor(atk * 1.25);
-  if (hasTrait('magic') && m.type === '마법') atk = Math.floor(atk * 1.15);
+  if (hasTrait('instinct') && isMeleeAttackRace(race)) atk = Math.floor(atk * 1.25);
+  if (hasTrait('magic') && isMagicAttackRace(race)) atk = Math.floor(atk * 1.15);
   const critChance = 0.1 + (hasTrait('lucky') ? 0.15 : 0);
   const isCrit = Math.random() < critChance;
   if (isCrit) { atk *= 2; }
@@ -894,7 +912,7 @@ function calcEnemyAtk(m) {
   if (race.magicWeak && m.type === '마법') dmg = Math.floor(dmg * 1.5);
   if (race.magicResist && m.type === '마법') { dmg = Math.floor(dmg * 0.6); }
   if (race.earthDefense) dmg = Math.max(1, dmg - getEarthDefense());
-  if (hasTrait('instinct') && m.type === '물리') dmg = Math.floor(dmg * 1.1);
+  if (hasTrait('instinct')) dmg = Math.floor(dmg * 1.1);
   if (hasTrait('guard')) dmg = Math.floor(dmg * (combat?.defending ? 0.8 : 0.9));
   if (combat?.defending) dmg = Math.floor(dmg * 0.4);
   if (combat?.spiritShield) dmg = Math.floor(dmg * 0.4);
@@ -1059,7 +1077,9 @@ function updateSkillBtn() {
     btn.textContent = `⏳ ${race.skill.name} (${combat.skillCooldown}턴)`;
     btn.disabled = true;
   } else {
-    btn.textContent = `${race.skill.icon} ${race.skill.name}`;
+    btn.textContent = race.id === 'poop' && combat.poisonTurns > 0
+      ? `${race.skill.icon} 독 증폭`
+      : `${race.skill.icon} ${race.skill.name}`;
     btn.disabled = false;
   }
 }
@@ -1296,6 +1316,7 @@ function combatAction(action) {
   // ── 내 행동 ──
   if (action === 'attack') {
     advanceTime();
+    const vampireCost = applyVampireAttackCost();
     const base = state.atk + rand(0, 5);
     const { atk: atkRaw, isCrit } = calcMyAtk(base, m);
     let atk = atkRaw;
@@ -1329,6 +1350,7 @@ function combatAction(action) {
     let msg = mirrorDodged
       ? `  👥 분신! 피해 무효!  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`
       : `  ⚔️ 공격 ${atk}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`;
+    if (vampireCost > 0) msg += ` 🩸-${vampireCost}`;
     const leechRate = getVampireLeechRate();
     if (!mirrorDodged && leechRate > 0) {
       const leech = Math.floor(atk * leechRate);
@@ -1351,6 +1373,10 @@ function combatAction(action) {
     if (id === 'human') {
       let h1 = Math.floor((state.atk + rand(0,5)) * 0.8);
       let h2 = Math.floor((state.atk + rand(0,5)) * 0.8);
+      if (hasTrait('instinct') && isMeleeAttackRace(race)) {
+        h1 = Math.floor(h1 * 1.25);
+        h2 = Math.floor(h2 * 1.25);
+      }
       if (combat.isBoss && hasTrait('bossKill')) {
         h1 = Math.floor(h1 * 1.5);
         h2 = Math.floor(h2 * 1.5);
@@ -1455,7 +1481,15 @@ function combatAction(action) {
       log(`  💀 공포! 적 공격력 2턴 감소 (일반 20%, 보스 15%)`, 'system');
     } else if (id === 'poop') {
       if (combat.poisonTurns > 0) {
-        log(`  ☠️ 이미 독 상태입니다! (남은 턴: ${combat.poisonTurns})`, 'system');
+        const burstTick = combat.poisonTick + 1;
+        const burstDmg = Math.floor(combat.maxEnemyHp * burstTick * 0.04);
+        combat.enemyHp = Math.max(0, combat.enemyHp - burstDmg);
+        log(`  ☠️ 독 증폭! ${burstDmg} 피해 (${burstTick}턴째 독을 즉시 폭발)`, 'system');
+        if (combat.enemyHp > 0) {
+          combat.poisonTurns = 4;
+          combat.poisonTick = 0;
+          log(`  ☠️ 독액 재도포! 4턴 지속 피해`, 'system');
+        }
       } else {
         combat.poisonTurns = 4;
         combat.poisonTick = 0;
@@ -1663,7 +1697,8 @@ function levelUp() {
 function pickRebirthRace(boss) {
   const weights = [...boss.rebirthWeights];
   if (hasTrait('vampire') && RACES.some(r => r.id === 'vampire') && !weights.some(w => w.id === 'vampire')) {
-    weights.push({ id:'vampire', w:25 });
+    weights.push({ id:'vampire', w:50 });
+    log(`  🩸 흡혈 특성이 피의 환생을 부른다... (흡혈귀 후보 추가)`, 'system');
   }
   const total = weights.reduce((s,w) => s + w.w, 0);
   let r = rand(1, total);

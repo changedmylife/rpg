@@ -75,12 +75,17 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
 - Shared traits:
   - `guard` was added as the 11th trait.
   - It reduces incoming damage by 10%, or by an additional 10% while defending.
+  - `magic` now boosts player attacks based on the player's attack style (`race.canMagic`), not the enemy type.
+  - `instinct` now boosts outgoing melee-style player attacks and increases all incoming damage by 10%.
+  - `bossKill` display text says "damage dealt to bosses +50%" to avoid confusing it with boss attack power.
 - Vampire race and day/night:
   - `vampire` was added as a reincarnation race.
   - Vampire can appear in any boss rebirth pool only if the player died while holding the common `vampire` trait.
+  - Current vampire rebirth weight is 50, so most boss pools give vampire about a 33.3% chance when the condition is met.
   - Day/night state is stored on `state.timeOfDay` with `state.timeTick`.
   - Time advances on valid combat actions and rest; every 3 ticks toggles day/night.
   - Vampire race has day attack penalty and night attack bonus.
+  - Vampire normal attacks cost 5% max HP, but cannot reduce the player below 1 HP by cost alone.
   - Vampire racial leech and common `vampire` trait leech do not stack additively; `getVampireLeechRate()` uses the highest applicable rate.
   - Current leech rates:
     - common `vampire` trait: 30%
@@ -92,6 +97,12 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - Skeleton physical resistance only applies to physical boss attacks.
   - Skeleton magic weakness now applies to magical boss attacks.
   - Skeleton fear affects normal enemies by 20% and boss attacks by 15%.
+- Poop poison:
+  - `독액` applies 4-turn poison.
+  - Poison damage is `floor(maxEnemyHp * poisonTick * 0.04)`, so normal ticks are 4%, 8%, 12%, and 16% of enemy max HP.
+  - If the skill cooldown is ready while poison is still active, the skill button changes to `독 증폭`.
+  - `독 증폭` immediately deals the next poison tick, then reapplies a fresh 4-turn poison if the enemy survives.
+  - This is intended to create a choice between direct attack damage plus the pending poison tick, or spending the action to front-load and refresh poison.
 - Combat async hardening:
   - combat uses `combatSeq`/`token`.
   - delayed combat callbacks use `scheduleCombat()` to avoid stale timers affecting new combats.
