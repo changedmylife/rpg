@@ -66,6 +66,9 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - uses viewport/safe-area fixes and responsive combat sizing.
 - Final clear state:
   - final boss victory shows a clear panel using `Clear_img.png`.
+  - Final boss victory now stores `state.clearSummary` and renders `#clear-record` with final race, level, rebirth count, HP/ATK, and traits.
+  - Final clear logs use a dedicated Eclipse Queen ending message before setting `state.cleared`.
+  - Restart button text is `새 윤회 시작`; restart clears the ending summary and closes DEV controls.
 - Asset extraction:
   - large inline base64 assets were moved into `assets/extracted/`.
   - HTML should no longer contain large base64 blobs.

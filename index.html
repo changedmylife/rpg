@@ -412,6 +412,18 @@ document.currentScript.after(link);
   .clear-img { width:100%; max-height:56dvh; object-fit:contain; border-radius:10px; box-shadow:0 18px 60px rgba(0,0,0,0.45); }
   .clear-title { font-size:20px; font-weight:700; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.7); }
   .clear-copy { font-size:12px; line-height:1.6; color:rgba(255,255,255,0.72); }
+  .clear-record {
+    width:min(360px, 100%);
+    display:grid; grid-template-columns:1fr 1fr; gap:6px;
+    padding:10px;
+    border:0.5px solid rgba(255,255,255,0.14);
+    border-radius:8px;
+    background:rgba(0,0,0,0.48);
+    text-align:left;
+  }
+  .clear-record-title { grid-column:1 / -1; color:#FAC775; font-size:12px; font-weight:700; text-align:center; margin-bottom:2px; }
+  .clear-record-row { color:rgba(255,255,255,0.75); font-size:11px; line-height:1.45; }
+  .clear-record-row strong { color:#fff; font-weight:600; }
 
   /* ── 하단 버튼 ── */
   #bottom-bar { padding:14px 0 0; }
@@ -592,6 +604,7 @@ document.currentScript.after(link);
         <img class="clear-img" src="Clear_img.png" alt="최종 클리어">
         <div class="clear-title">모든 윤회를 넘어섰다</div>
         <div class="clear-copy">이클립스 퀸이 쓰러지고, 마지막 생의 기록이 전설로 남았다.</div>
+        <div class="clear-record" id="clear-record"></div>
       </div>
     </div>
 
@@ -625,7 +638,7 @@ document.currentScript.after(link);
       <button id="btn-debug-kill" data-dev-control onclick="instantKillBoss()" style="display:none; background:rgba(255,50,50,0.3);border-color:rgba(255,100,100,0.4);">☠️ 보스 즉시킬</button>
       <button id="btn-dev-toggle" onclick="toggleDevPanel()" style="display:none; background:rgba(175,169,236,0.18);border-color:rgba(175,169,236,0.35);">DEV 열기</button>
     </div>
-    <button id="btn-restart" onclick="restartGame()" style="display:none; width:100%; margin-top:8px; padding:12px; background:#E24B4A; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer;">↺ 다시 시작</button>
+    <button id="btn-restart" onclick="restartGame()" style="display:none; width:100%; margin-top:8px; padding:12px; background:#E24B4A; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer;">↺ 새 윤회 시작</button>
   </div>
 
 </div></div>
@@ -1043,6 +1056,11 @@ function updateStatusBanner(currentRace, isTempRace) {
   const banner = document.getElementById('status-banner');
   if (!banner) return;
   const chips = [];
+  if (state.cleared) {
+    banner.innerHTML = '<span class="status-chip event">🏆 클리어 완료</span>';
+    banner.style.display = 'flex';
+    return;
+  }
   const tickNow = state.timeTick || 0;
   chips.push({
     cls: isNight() ? 'night' : 'day',
@@ -1065,6 +1083,32 @@ function updateStatusBanner(currentRace, isTempRace) {
 
   banner.innerHTML = chips.map(chip => `<span class="status-chip ${chip.cls}">${chip.text}</span>`).join('');
   banner.style.display = chips.length > 0 ? 'flex' : 'none';
+}
+
+function createClearSummary() {
+  const race = RACES[state.raceIdx];
+  return {
+    raceName: `${race.icon} ${race.name}`,
+    level: state.level,
+    reborn: state.reborn,
+    maxHp: state.maxHp,
+    atk: state.atk,
+    traits: (state.traits || []).map(t => `${t.icon} ${t.name}`).join(' / ') || '없음',
+  };
+}
+
+function updateClearPanel() {
+  const record = document.getElementById('clear-record');
+  if (!record) return;
+  const summary = state.clearSummary || createClearSummary();
+  record.innerHTML = `
+    <div class="clear-record-title">마지막 생의 기록</div>
+    <div class="clear-record-row"><strong>종족</strong><br>${summary.raceName}</div>
+    <div class="clear-record-row"><strong>레벨</strong><br>Lv.${summary.level}</div>
+    <div class="clear-record-row"><strong>환생</strong><br>${summary.reborn}회</div>
+    <div class="clear-record-row"><strong>능력</strong><br>HP ${summary.maxHp} / ATK ${summary.atk}</div>
+    <div class="clear-record-row" style="grid-column:1 / -1;"><strong>특성</strong><br>${summary.traits}</div>
+  `;
 }
 
 function updateUI() {
@@ -1304,6 +1348,7 @@ function setCombatUI(active) {
   document.getElementById('combat-panel').style.display = active ? 'flex' : 'none';
   document.getElementById('idle-panel').style.display  = (!active && !showClear) ? 'flex' : 'none';
   document.getElementById('clear-panel').style.display = showClear ? 'flex' : 'none';
+  if (showClear) updateClearPanel();
   document.getElementById('combat-actions').style.display = active ? 'grid' : 'none';
   document.getElementById('actions').style.display = (active || showClear) ? 'none' : 'grid';
   updateDevControls();
@@ -1945,11 +1990,16 @@ function endCombat(victory, token) {
         const next = BOSSES[state.bossStage];
         log(`▶ 다음 스테이지: ${next.icon} ${next.area} — ${next.name}`, 'system');
       } else {
+        log(`🌑 이클립스 퀸의 그림자가 무너진다...`, 'highlight');
+        log(`  윤회의 고리가 천천히 풀리기 시작한다.`, 'system');
+        state.clearSummary = createClearSummary();
         state.cleared = true;
         state.dead = true;
         state.bossOnly = true;
         state.bossStage = BOSSES.length;
-        log(`🌟 모든 스테이지 클리어! 전설이 되었다.`, 'rebirth');
+        state.devPanelOpen = false;
+        state.forcedInterventionEvent = null;
+        log(`🌟 모든 스테이지 클리어! 마지막 생의 기록이 완성되었다.`, 'rebirth');
         setCombatUI(false);
       }
     } else {
@@ -2147,7 +2197,7 @@ function restartGame() {
   const r = RACES[0];
   state.raceIdx = 0; state.level = 1;
   state.bossStage = 0; state.reborn = 0;
-  state.dead = false; state.bossOnly = false; state.hpFloor = false; state.undyingUsed = false; state.cleared = false; state.timeOfDay = 'day'; state.timeTick = 0; state.interventionActive = false; state.forcedInterventionEvent = null; state.devPanelOpen = false; combat = null; setCombatUI && setCombatUI(false);
+  state.dead = false; state.bossOnly = false; state.hpFloor = false; state.undyingUsed = false; state.cleared = false; state.clearSummary = null; state.timeOfDay = 'day'; state.timeTick = 0; state.interventionActive = false; state.forcedInterventionEvent = null; state.devPanelOpen = false; combat = null; setCombatUI && setCombatUI(false);
   // 새 특성 부여
   const newTrait = pickTrait();
   state.traits = [newTrait];
