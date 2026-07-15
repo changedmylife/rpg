@@ -71,19 +71,43 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - HTML should no longer contain large base64 blobs.
 - Debug mode:
   - `DEV_MODE` flag added.
+  - Debug controls are collapsed by default behind the `DEV 열기` toggle.
   - debug skip and instant boss kill controls added.
+  - intervention event test controls added:
+    - `debug-event-select` reserves a specific intervention event for the next normal hunt.
+    - `btn-debug-force-event` reserves one weighted-random intervention event for the next normal hunt.
+    - Forced events are consumed once by `rollInterventionEvent()`.
 - Shared traits:
   - `guard` was added as the 11th trait.
   - It reduces incoming damage by 10%, or by an additional 10% while defending.
   - `magic` now boosts player attacks based on the player's attack style (`race.canMagic`), not the enemy type.
   - `instinct` now boosts outgoing melee-style player attacks and increases all incoming damage by 10%.
   - `bossKill` display text says "damage dealt to bosses +50%" to avoid confusing it with boss attack power.
+- Reincarnation intervention events:
+  - Normal hunt button has a 5% chance to trigger a weighted intervention event before combat starts.
+  - Boss fights do not use intervention events.
+  - Current event table: `supply`, `weaponSupply`, `playerFirst`, `enemyFirst`, `rareEnemy`, `rift`, `bloodline`.
+  - Event weights total 100: `supply` 18, `weaponSupply` 12, `playerFirst` 20, `enemyFirst` 15, `rareEnemy` 15, `rift` 15, `bloodline` 5.
+  - All intervention events use the event modal before combat starts.
+  - Non-choice events use a single `전투 시작` confirmation button; `rift` and `bloodline` provide choices.
+  - `bloodline` temporarily changes `state.raceIdx` for one combat and stores `temporaryRaceRestoreIdx` on `combat`.
+  - Temporary race changes currently swap race passives/skill/UI for the battle, but do not rewrite current HP/ATK growth stats.
+  - Always restore temporary race in `endCombat()` before returning to idle/game-over flow.
+- Status clarity UI:
+  - `status-banner` shows day/night progress as `current tick / TIME_TICKS_PER_SHIFT`.
+  - It also shows forced next intervention events, active combat intervention events, and temporary race state.
+  - Temporary race battles mark the HUD race name with `*` and the battle player name with `(임시)`.
 - Vampire race and day/night:
   - `vampire` was added as a reincarnation race.
   - Vampire can appear in any boss rebirth pool only if the player died while holding the common `vampire` trait.
   - Current vampire rebirth weight is 50, so most boss pools give vampire about a 33.3% chance when the condition is met.
   - Day/night state is stored on `state.timeOfDay` with `state.timeTick`.
-  - Time advances on valid combat actions and rest; every 3 ticks toggles day/night.
+  - Time advances only after combat ends or rest completes, so day/night does not change mid-combat.
+  - Every 4 time ticks toggles day/night.
+  - Normal hunt first-strike chance is 15% by day and 35% by night.
+  - Night normal hunt victories get +15% base XP before the usual XP multipliers.
+  - Night first-strike monster victories get an additional +35% base XP, stacking multiplicatively after the night hunt bonus.
+  - Rest big-success chance is 12% by day and 25% by night.
   - Vampire race has day attack penalty and night attack bonus.
   - Vampire normal attacks cost 5% max HP, but cannot reduce the player below 1 HP by cost alone.
   - Vampire racial leech and common `vampire` trait leech do not stack additively; `getVampireLeechRate()` uses the highest applicable rate.
@@ -118,6 +142,25 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
 - Monster sprites:
   - Normal monsters can now define optional sprite fields just like bosses.
   - `문블룸 페어리` currently uses `assets/extracted/mob_2.png` as a single-image breathing sprite.
+  - `브램블 울프`, `아이언터스크 보어`, and `스톤쉘 크랩` use `mob_3.png`, `mob_4.png`, and `mob_5.png` respectively.
+  - `글룸 스토커` uses generated shadow panther sprite `mob_6.png`.
+  - All physical normal monsters now have dedicated single-image sprites:
+    - `브램블 울프`: `mob_3.png`
+    - `아이언터스크 보어`: `mob_4.png`
+    - `스톤쉘 크랩`: `mob_5.png`
+    - `글룸 스토커`: `mob_6.png`
+    - `레드혼 스태그`: `mob_7.png`
+    - `캐리언 리퍼`: `mob_8.png`
+    - `미스트 클로`: `mob_9.png`
+    - `케이브 마울러`: `mob_10.png`
+    - `블러드팽`: `mob_11.png`
+    - `루인 골렘`: `mob_12.png`
+  - Magic normal monster sprites:
+    - `윌로우 위스프`: `mob_13.png`
+    - `문블룸 페어리`: `mob_14.png`
+    - `크리스탈 스프라이트`: `mob_15.png`
+    - `헥스 크로우`: `mob_16.png`
+  - Current normal monster sprite baseline is single-image breathing sprites at `96x116` canvas/display (`min(96px, 24vw)` by `min(116px, 29vw)`).
 - Boss 10 pattern:
   - Eclipse Queen now uses a phase-based mixed special pattern in `applyBossAttack()`.
   - See the dedicated notes below before changing final boss balance.
