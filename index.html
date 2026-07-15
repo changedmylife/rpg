@@ -472,6 +472,7 @@ document.currentScript.after(link);
       <span class="hud-stage" id="stat-stage">🌿1</span>
       <span class="hud-atk">⚔️<span id="stat-atk">10</span></span>
       <span class="hud-reborn">♻️<span id="stat-reborn">0</span></span>
+      <span class="hud-reborn" id="time-badge">☀️낮</span>
     </div>
   </div>
 
@@ -613,7 +614,7 @@ function pickTrait() {
   return TRAITS[rand(0, TRAITS.length - 1)];
 }
 
-let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false };
+let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false, timeOfDay:'day', timeTick:0 };
 let combat = null; // 현재 전투 상태
 let combatSeq = 0;
 
@@ -636,6 +637,27 @@ function setCombatButtonsDisabled(disabled, token) {
   if (token && !isCombatActive(token)) return;
   document.querySelectorAll('#combat-actions button').forEach(b => { b.disabled = disabled; });
   if (!disabled) updateSkillBtn();
+}
+
+function isNight() {
+  return state.timeOfDay === 'night';
+}
+
+function advanceTime() {
+  state.timeTick = (state.timeTick || 0) + 1;
+  if (state.timeTick >= 3) {
+    state.timeTick = 0;
+    state.timeOfDay = isNight() ? 'day' : 'night';
+    log(isNight() ? '🌙 밤이 내려앉았다.' : '☀️ 날이 밝았다.', 'system');
+  }
+  updateUI();
+}
+
+function getVampireLeechRate() {
+  const race = RACES[state.raceIdx];
+  const traitRate = hasTrait('vampire') ? 0.3 : 0;
+  const racialRate = race?.id === 'vampire' ? (isNight() ? 0.45 : 0.15) : 0;
+  return Math.max(traitRate, racialRate);
 }
 
 function updateDevControls() {
@@ -721,6 +743,8 @@ function updateUI() {
   document.getElementById('stat-lv').textContent = state.level;
   document.getElementById('stat-atk').textContent = state.atk;
   document.getElementById('stat-reborn').textContent = state.reborn;
+  const timeBadge = document.getElementById('time-badge');
+  if (timeBadge) timeBadge.textContent = isNight() ? '🌙밤' : '☀️낮';
   const tb = document.getElementById('trait-banner');
   if (tb) {
     const validTraits = (state.traits || []).filter(t => t && t.icon);
@@ -845,6 +869,7 @@ function getEarthDefense() {
 function calcMyAtk(baseAtk, m) {
   const race = RACES[state.raceIdx];
   let atk = baseAtk;
+  if (race.id === 'vampire') atk = Math.floor(atk * (isNight() ? 1.2 : 0.85));
   if (race.canMagic && m.type === '마법') atk = Math.floor(atk * 1.4);
   if (hasTrait('berserk') && state.hp / state.maxHp <= 0.3) atk = Math.floor(atk * 1.6);
   if (hasTrait('instinct') && m.type === '물리') atk = Math.floor(atk * 1.25);
@@ -940,34 +965,34 @@ function setCombatUI(active) {
       }
     });
     setCombatButtonsDisabled(false, combatToken);
-    // 보스 스프라이트 canvas 애니메이션
+    // 개별 적 스프라이트 canvas 애니메이션
     if (window._bossAnim) { cancelAnimationFrame(window._bossAnim); window._bossAnim = null; }
-    const spriteData = combat.isBoss ? combat.boss.sprite : null;
+    const spriteRef = combat.isBoss ? combat.boss : combat.m;
+    const spriteData = spriteRef?.sprite || null;
     const canvas = document.getElementById('enemy-sprite-anim');
     if (canvas && canvas.getContext) {
       const ctx = canvas.getContext('2d');
       if (spriteData) {
-        const bossRef = combat.boss;
-        canvas.width = bossRef.spriteCanvasWidth || 80;
-        canvas.height = bossRef.spriteCanvasHeight || 100;
-        canvas.style.width = bossRef.spriteDisplayWidth || '';
-        canvas.style.height = bossRef.spriteDisplayHeight || '';
-        canvas.style.animation = bossRef.spriteBreathe ? 'bossBreathe 1.6s ease-in-out infinite' : '';
+        canvas.width = spriteRef.spriteCanvasWidth || 80;
+        canvas.height = spriteRef.spriteCanvasHeight || 100;
+        canvas.style.width = spriteRef.spriteDisplayWidth || '';
+        canvas.style.height = spriteRef.spriteDisplayHeight || '';
+        canvas.style.animation = spriteRef.spriteBreathe ? 'bossBreathe 1.6s ease-in-out infinite' : '';
         const img = new Image();
         img.onload = () => {
           if (!isCombatActive(combatToken)) return;
           let frame = 0;
           let last = 0;
           const CW = canvas.width, CH = canvas.height;
-          const FRAMES = bossRef.spriteFrames || 5, INTERVAL = bossRef.spriteInterval || 180;
-          const FRAME_SEQUENCE = bossRef.spriteFrameSequence || null;
-          const FW = bossRef.spriteFrameWidth || Math.floor(img.width / FRAMES);
-          const FH = bossRef.spriteFrameHeight || img.height;
-          const CROP_X = bossRef.spriteCropX || 0;
-          const CROP_Y = bossRef.spriteCropY || 0;
+          const FRAMES = spriteRef.spriteFrames || 5, INTERVAL = spriteRef.spriteInterval || 180;
+          const FRAME_SEQUENCE = spriteRef.spriteFrameSequence || null;
+          const FW = spriteRef.spriteFrameWidth || Math.floor(img.width / FRAMES);
+          const FH = spriteRef.spriteFrameHeight || img.height;
+          const CROP_X = spriteRef.spriteCropX || 0;
+          const CROP_Y = spriteRef.spriteCropY || 0;
           const SW = FW - CROP_X * 2;
           const SH = FH - CROP_Y * 2;
-          const SCALE = bossRef.spriteScale || Math.min(CW / FW, CH / FH);
+          const SCALE = spriteRef.spriteScale || Math.min(CW / FW, CH / FH);
           const DW = Math.min(CW, FW * SCALE);
           const DH = Math.min(CH, FH * SCALE);
           const DX = Math.floor((CW - DW) / 2);
@@ -1074,7 +1099,7 @@ function applyEnemyAttack(isBossTurn, token) {
   // 독 피해 — 적이 살아있을 때만
   if (combat && combat.poisonTurns > 0 && combat.enemyHp > 0) {
     combat.poisonTick++;
-    const poisonDmg = Math.floor(combat.maxEnemyHp * combat.poisonTick * 0.05);
+    const poisonDmg = Math.floor(combat.maxEnemyHp * combat.poisonTick * 0.04);
     combat.enemyHp = Math.max(0, combat.enemyHp - poisonDmg);
     combat.poisonTurns--;
     log(`  ☠️ 독 피해 ${poisonDmg} (${combat.poisonTick}턴째, 남은 턴: ${combat.poisonTurns})`);
@@ -1197,10 +1222,13 @@ function applyBossAttack() {
   } else if (combat.defending) {
     bossAtk = Math.floor(bossAtk * 0.4);
   }
+  const bossAttackType = boss.attackType || '물리';
   if (hasTrait('instinct')) bossAtk = Math.floor(bossAtk * 1.1);
   if (hasTrait('guard')) bossAtk = Math.floor(bossAtk * (combat.defending ? 0.8 : 0.9));
-  if (race.physResist) bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
-  if (race.magicResist) bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
+  if (combat.fearTurns > 0) bossAtk = Math.max(1, Math.floor(bossAtk * 0.85));
+  if (race.physResist && bossAttackType === '물리') bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
+  if (race.magicWeak && bossAttackType === '마법') bossAtk = Math.floor(bossAtk * 1.5);
+  if (race.magicResist && bossAttackType === '마법') bossAtk = Math.max(1, Math.floor(bossAtk * 0.6));
   if (race.earthDefense) bossAtk = Math.max(1, bossAtk - getEarthDefense());
   if (race.canDodge && Math.random() < 0.5) { bossAtk = 0; bossNote += ' 💨회피!'; }
   if (bossNote) log(`  ${bossNote}`, bigWarned ? 'danger' : 'system');
@@ -1223,7 +1251,7 @@ function applyBossAttack() {
 }
 
 function combatAction(action) {
-  if (!combat || state.dead || combat.comboLock) return;
+  if (!combat || state.dead || combat.comboLock || combat.enemyHp <= 0) return;
   const actionToken = combat.token;
   const m = combat.m;
   const race = RACES[state.raceIdx];
@@ -1267,6 +1295,7 @@ function combatAction(action) {
 
   // ── 내 행동 ──
   if (action === 'attack') {
+    advanceTime();
     const base = state.atk + rand(0, 5);
     const { atk: atkRaw, isCrit } = calcMyAtk(base, m);
     let atk = atkRaw;
@@ -1300,13 +1329,15 @@ function combatAction(action) {
     let msg = mirrorDodged
       ? `  👥 분신! 피해 무효!  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`
       : `  ⚔️ 공격 ${atk}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`;
-    if (!mirrorDodged && hasTrait('vampire')) {
-      const leech = Math.floor(atk * 0.3);
+    const leechRate = getVampireLeechRate();
+    if (!mirrorDodged && leechRate > 0) {
+      const leech = Math.floor(atk * leechRate);
       state.hp = Math.min(state.maxHp, state.hp + leech);
       msg += ` 🩸+${leech}`;
     }
     log(msg);
   } else if (action === 'defend') {
+    advanceTime();
     combat.defending = true;
     log(`  🛡️ 방어 태세`);
   } else if (action === 'skill') {
@@ -1314,21 +1345,28 @@ function combatAction(action) {
       log(`  ⏳ 스킬 쿨타임 중 (${combat.skillCooldown}턴 남음)`, 'system');
       return;
     }
+    advanceTime();
     const id = race.id;
     combat.skillCooldown = id === 'spirit' ? 5 : id === 'elf' ? 6 : 3;
     if (id === 'human') {
       let h1 = Math.floor((state.atk + rand(0,5)) * 0.8);
       let h2 = Math.floor((state.atk + rand(0,5)) * 0.8);
+      if (combat.isBoss && hasTrait('bossKill')) {
+        h1 = Math.floor(h1 * 1.5);
+        h2 = Math.floor(h2 * 1.5);
+      }
       const h1Curse = applyCurseDamage(h1);
       const h2Curse = applyCurseDamage(h2);
       h1 = h1Curse.dmg;
       h2 = h2Curse.dmg;
       const curseNote = h1Curse.cursed ? ' 🌙저주-20%' : '';
+      let comboDamage = 0;
       // 슬래시 이펙트 ID 미리 고정 (비동기 중 종족 바뀌어도 유지)
       const slashEffId = 'attack-effect';
       const slashAnim = 'slashEffect 0.5s steps(1) forwards';
       // 연속 공격 중 입력 차단 플래그
       combat.comboLock = true;
+      setCombatButtonsDisabled(true, actionToken);
       // 1타 즉시 반영
       let mirror1 = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
       if (!mirror1 && combat.isBoss && combat.boss.stage === 10 && combat.eclipseMirrorReady) {
@@ -1336,9 +1374,16 @@ function combatAction(action) {
         mirror1 = true;
       }
       if (mirror1) h1 = 0;
+      comboDamage += h1;
       combat.enemyHp = Math.max(0, combat.enemyHp - h1);
+      const leechRate = getVampireLeechRate();
+      if (!mirror1 && leechRate > 0) {
+        const leech1 = Math.floor(h1 * leechRate);
+        state.hp = Math.min(state.maxHp, state.hp + leech1);
+      }
       const eName1 = combat.isBoss ? combat.boss.name : combat.m.name;
-      log(mirror1 ? `  👥 1타! 분신 — 피해 무효!  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 1타! ${h1} 데미지${curseNote}  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}`);
+      const h1LeechNote = !mirror1 && leechRate > 0 ? ` 🩸+${Math.floor(h1 * leechRate)}` : '';
+      log(mirror1 ? `  👥 1타! 분신 — 피해 무효!  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 1타! ${h1} 데미지${curseNote}${h1LeechNote}  ${eName1} ${combat.enemyHp}/${combat.maxEnemyHp}`);
       updateCombatBar();
       const sp2 = document.getElementById('enemy-sprite-anim');
       if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
@@ -1349,7 +1394,7 @@ function combatAction(action) {
         const spDead = document.getElementById('enemy-sprite-anim');
         if (spDead) { spDead.classList.add('sprite-death'); }
         log(`  💀 ${combat.isBoss ? combat.boss.name : combat.m.name} 쓰러졌다!`, 'rebirth');
-        combat.comboLock = false;
+        log(`  ⚔️⚔️ 연속 공격 완료! 실제 피해 ${comboDamage}${curseNote}`);
         scheduleCombat(600, actionToken, () => endCombat(true, actionToken));
         return;
       }
@@ -1357,9 +1402,16 @@ function combatAction(action) {
       scheduleCombat(400, actionToken, () => {
         const mirror2 = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
         if (mirror2) h2 = 0;
+        comboDamage += h2;
         combat.enemyHp = Math.max(0, combat.enemyHp - h2);
+        if (!mirror2 && leechRate > 0) {
+          const leech2 = Math.floor(h2 * leechRate);
+          state.hp = Math.min(state.maxHp, state.hp + leech2);
+        }
         const eName2 = combat.isBoss ? combat.boss.name : combat.m.name;
-        log(mirror2 ? `  👥 2타! 분신 — 피해 무효!  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 2타! ${h2} 데미지${curseNote}  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}`);
+        const h2LeechNote = !mirror2 && leechRate > 0 ? ` 🩸+${Math.floor(h2 * leechRate)}` : '';
+        log(mirror2 ? `  👥 2타! 분신 — 피해 무효!  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}` : `  ⚔️ 2타! ${h2} 데미지${curseNote}${h2LeechNote}  ${eName2} ${combat.enemyHp}/${combat.maxEnemyHp}`);
+        log(`  ⚔️⚔️ 연속 공격 완료! 실제 피해 ${comboDamage}${curseNote}`);
         updateCombatBar();
         if (sp2) { sp2.classList.add('sprite-hit'); scheduleCombat(250, actionToken, () => sp2.classList.remove('sprite-hit')); }
         const eff2 = document.getElementById(slashEffId);
@@ -1376,17 +1428,38 @@ function combatAction(action) {
           });
         }
       }, 400);
-      log(`  ⚔️⚔️ 연속 공격! 총 ${h1+h2} 데미지${curseNote}`);
+      log(`  ⚔️⚔️ 연속 공격!`);
+    } else if (id === 'vampire') {
+      const base = Math.floor((state.atk + rand(0, 5)) * (isNight() ? 1.6 : 1.15));
+      const { atk: atkRaw, isCrit } = calcMyAtk(base, m);
+      let bite = atkRaw;
+      if (combat.isBoss && hasTrait('bossKill')) bite = Math.floor(bite * 1.5);
+      const curseResult = applyCurseDamage(bite);
+      bite = curseResult.dmg;
+      let mirrorDodged = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
+      if (!mirrorDodged && combat.isBoss && combat.boss.stage === 10 && combat.eclipseMirrorReady) {
+        combat.eclipseMirrorReady = false;
+        mirrorDodged = true;
+      }
+      if (mirrorDodged) bite = 0;
+      combat.enemyHp = Math.max(0, combat.enemyHp - bite);
+      const leechRate = Math.max(getVampireLeechRate(), isNight() ? 0.55 : 0.25);
+      const leech = mirrorDodged ? 0 : Math.floor(bite * leechRate);
+      if (leech > 0) state.hp = Math.min(state.maxHp, state.hp + leech);
+      const eName = combat.isBoss ? combat.boss.name : combat.m.name;
+      log(mirrorDodged
+        ? `  👥 피의 갈증! 분신 — 피해 무효!  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`
+        : `  🩸 피의 갈증! ${bite}${isCrit ? ' 💥치명타!' : ''}${curseResult.cursed ? ' 🌙저주-20%' : ''}  🩸+${leech}  ${eName} ${combat.enemyHp}/${combat.maxEnemyHp}`);
     } else if (id === 'skeleton') {
       combat.fearTurns = 2;
-      log(`  💀 공포! 적 공격력 2턴 20% 감소`, 'system');
+      log(`  💀 공포! 적 공격력 2턴 감소 (일반 20%, 보스 15%)`, 'system');
     } else if (id === 'poop') {
       if (combat.poisonTurns > 0) {
         log(`  ☠️ 이미 독 상태입니다! (남은 턴: ${combat.poisonTurns})`, 'system');
       } else {
-        combat.poisonTurns = 6;
+        combat.poisonTurns = 4;
         combat.poisonTick = 0;
-        log(`  ☠️ 독액! 6턴 지속 피해 (매 턴 증가)`, 'system');
+        log(`  ☠️ 독액! 4턴 지속 피해 (매 턴 증가)`, 'system');
       }
       const poopEff = document.getElementById('poop-skill-effect');
       if (poopEff) {
@@ -1523,6 +1596,7 @@ function rest() {
   const race = RACES[state.raceIdx];
   state.restLeft--;
   logDivider();
+  advanceTime();
   if(state.hpFloor) log('  💊 회복 후에도 보스 도전만 가능하다.', 'system');
   if (race.fullRestoreOnce) {
     const healed = state.maxHp - state.hp;
@@ -1587,7 +1661,10 @@ function levelUp() {
 }
 
 function pickRebirthRace(boss) {
-  const weights = boss.rebirthWeights;
+  const weights = [...boss.rebirthWeights];
+  if (hasTrait('vampire') && RACES.some(r => r.id === 'vampire') && !weights.some(w => w.id === 'vampire')) {
+    weights.push({ id:'vampire', w:25 });
+  }
   const total = weights.reduce((s,w) => s + w.w, 0);
   let r = rand(1, total);
   for (const w of weights) {
@@ -1617,7 +1694,7 @@ function fightBoss() {
     bossMaxHp,
     enemyHp: bossMaxHp,
     maxEnemyHp: bossMaxHp,
-    m: { name: boss.name, type: '물리', tier: 10, traits: [boss.special] },
+    m: { name: boss.name, type: boss.attackType || '물리', tier: 10, traits: [boss.special] },
     baseXp: 0,
     defending: false,
     stunned: false,
@@ -1666,7 +1743,7 @@ function restartGame() {
   const r = RACES[0];
   state.raceIdx = 0; state.level = 1;
   state.bossStage = 0; state.reborn = 0;
-  state.dead = false; state.bossOnly = false; state.hpFloor = false; state.undyingUsed = false; state.cleared = false; combat = null; setCombatUI && setCombatUI(false);
+  state.dead = false; state.bossOnly = false; state.hpFloor = false; state.undyingUsed = false; state.cleared = false; state.timeOfDay = 'day'; state.timeTick = 0; combat = null; setCombatUI && setCombatUI(false);
   // 새 특성 부여
   const newTrait = pickTrait();
   state.traits = [newTrait];
@@ -1743,7 +1820,7 @@ function instantKillBoss() {
     bossMaxHp: boss.hp,
     enemyHp: 0,
     maxEnemyHp: boss.hp,
-    m: { name: boss.name, type: '물리', tier: 10, traits: [boss.special] },
+    m: { name: boss.name, type: boss.attackType || '물리', tier: 10, traits: [boss.special] },
     baseXp: 0,
   });
   log(`☠️ DEV: ${boss.name} 즉시 처치`, 'system');
