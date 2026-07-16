@@ -134,7 +134,15 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - It explains the core loop: hunt, challenge bosses, reincarnate on defeat, and clear stage 10.
   - `startGameFromTitle(openInfo)` hides the overlay and can optionally open the info/help window.
   - The title screen includes `기억의 앨범`, currently a preview popup for future race-specific ending images and clear records.
+  - If a save exists, `이어하기` appears on the title screen and restores `localStorage` progress.
+  - `윤회 시작` and `규칙 보고 시작` always create a fresh run and overwrite the previous current-progress save.
   - The title overlay does not change the existing initial state; it sits above `#ui-wrap`.
+- Auto save:
+  - Current progress is stored in `localStorage` under `reincarnationRpgSaveV1`.
+  - Saving happens only after the title has been dismissed and when no combat/intervention event is active.
+  - Saved fields include current state such as race, level, HP, ATK, XP, boss stage, rebirth count, traits, day/night, rest count, clear state, and clear summary.
+  - Combat state itself is not serialized; reload resumes at the safe non-combat game screen.
+  - `restartGame()` clears the old current save, creates a fresh run, then saves that new run.
 - Vampire race and day/night:
   - `vampire` was added as a reincarnation race.
   - Vampire can appear in any boss rebirth pool only if the player died while holding the common `vampire` trait.

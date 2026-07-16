@@ -723,6 +723,7 @@ document.currentScript.after(link);
     <div class="title-goal-row"><span>🌑</span><strong>10스테이지</strong> 이클립스 퀸을 쓰러뜨리면 클리어입니다.</div>
   </div>
   <div class="title-actions">
+    <button id="btn-title-continue" class="title-start" onclick="continueSavedGame()" style="display:none;">이어하기</button>
     <button class="title-start" onclick="startGameFromTitle()">윤회 시작</button>
     <button class="title-info" onclick="startGameFromTitle(true)">규칙 보고 시작</button>
     <button class="title-album" onclick="showAlbumPreview()">기억의 앨범</button>
@@ -1154,17 +1155,118 @@ function pickTrait() {
   return TRAITS[rand(0, TRAITS.length - 1)];
 }
 
-let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false, timeOfDay:'day', timeTick:0, interventionActive:false, forcedInterventionEvent:null, devPanelOpen:false, titleSeen:false };
+const SAVE_KEY = 'reincarnationRpgSaveV1';
+
+function createNewState() {
+  const r = RACES[0];
+  const initTrait = pickTrait();
+  const next = {
+    raceIdx:0, level:1,
+    hp:r.hp, maxHp:r.hp, atk:r.atk,
+    xp:0, xpNext:30, reborn:0,
+    dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0,
+    hpFloor:false, traits:[initTrait], undyingUsed:false, cleared:false,
+    clearSummary:null, timeOfDay:'day', timeTick:0,
+    interventionActive:false, forcedInterventionEvent:null, devPanelOpen:false, titleSeen:false,
+  };
+  if (initTrait.id === 'homebody') next.restLeft = MAX_REST * 2;
+  if (initTrait.id === 'sturdy') { next.maxHp = Math.floor(next.maxHp * 1.5); next.hp = next.maxHp; }
+  return next;
+}
+
+function sanitizeState(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const base = createNewState();
+  const clean = { ...base, ...raw };
+  clean.raceIdx = Math.min(Math.max(Number(clean.raceIdx) || 0, 0), RACES.length - 1);
+  clean.bossStage = Math.min(Math.max(Number(clean.bossStage) || 0, 0), BOSSES.length);
+  clean.level = Math.max(1, Number(clean.level) || 1);
+  clean.hp = Math.max(0, Number(clean.hp) || 0);
+  clean.maxHp = Math.max(1, Number(clean.maxHp) || RACES[clean.raceIdx].hp);
+  clean.atk = Math.max(1, Number(clean.atk) || RACES[clean.raceIdx].atk);
+  clean.xp = Math.max(0, Number(clean.xp) || 0);
+  clean.xpNext = Math.max(1, Number(clean.xpNext) || 30);
+  clean.reborn = Math.max(0, Number(clean.reborn) || 0);
+  clean.restLeft = Math.max(0, Number(clean.restLeft) || 0);
+  clean.timeOfDay = clean.timeOfDay === 'night' ? 'night' : 'day';
+  clean.timeTick = Math.min(Math.max(Number(clean.timeTick) || 0, 0), TIME_TICKS_PER_SHIFT);
+  clean.traits = Array.isArray(clean.traits)
+    ? clean.traits.map(t => TRAITS.find(src => src.id === t?.id)).filter(Boolean)
+    : [];
+  if (clean.traits.length === 0) clean.traits = [pickTrait()];
+  clean.interventionActive = false;
+  clean.forcedInterventionEvent = null;
+  clean.devPanelOpen = false;
+  clean.titleSeen = false;
+  return clean;
+}
+
+function loadSavedState() {
+  try {
+    return sanitizeState(JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'));
+  } catch {
+    return null;
+  }
+}
+
+function hasSavedGame() {
+  return !!loadSavedState();
+}
+
+function saveGame() {
+  if (!state?.titleSeen || combat || state.interventionActive) return;
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    updateContinueButton();
+  } catch {}
+}
+
+function clearSavedGame() {
+  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  updateContinueButton();
+}
+
+function updateContinueButton() {
+  const btn = document.getElementById('btn-title-continue');
+  if (btn) btn.style.display = hasSavedGame() ? '' : 'none';
+}
+
+const bootSavedState = loadSavedState();
+let state = bootSavedState || createNewState();
 let combat = null; // 현재 전투 상태
 let combatSeq = 0;
 
 function startGameFromTitle(openInfo=false) {
+  clearSavedGame();
+  state = createNewState();
   const title = document.getElementById('title-screen');
   if (title) title.classList.add('is-hidden');
   state.titleSeen = true;
+  const logEl = document.getElementById('log');
+  if (logEl) logEl.innerHTML = '';
+  log('▶ 새로운 생이 시작되었다...', 'system');
+  if (state.traits && state.traits[0]) log(`  ✨ 공용 특성 부여: ${state.traits.map(t=>t.icon+' '+t.name).join(', ')}`, 'rebirth');
   log('목표: 사냥으로 성장하고, 보스를 쓰러뜨리며 10스테이지를 클리어하세요.', 'system');
   log('보스에게 패배해도 새로운 종족으로 환생해 다시 도전합니다.', 'system');
+  updateUI();
+  saveGame();
   if (openInfo) setTimeout(showInfo, 220);
+}
+
+function continueSavedGame() {
+  const saved = loadSavedState();
+  if (!saved) return;
+  state = saved;
+  state.titleSeen = true;
+  const title = document.getElementById('title-screen');
+  if (title) title.classList.add('is-hidden');
+  const logEl = document.getElementById('log');
+  if (logEl) logEl.innerHTML = '';
+  log('↻ 저장된 윤회를 이어갑니다.', 'rebirth');
+  log(`  현재: ${RACES[state.raceIdx].icon} ${RACES[state.raceIdx].name} Lv.${state.level} / ${state.bossStage >= BOSSES.length ? '클리어 완료' : `${state.bossStage + 1}스테이지`}`, 'system');
+  setCombatUI(false);
+  updateUI();
+  saveGame();
 }
 
 async function showAlbumPreview() {
@@ -1481,6 +1583,7 @@ function updateUI() {
   const restartBtn = document.getElementById('btn-restart');
   if (restartBtn) restartBtn.style.display = state.dead && !state.cleared ? 'block' : 'none';
   updateDevControls();
+  saveGame();
 }
 
 function rand(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
@@ -2579,30 +2682,23 @@ function die(race, boss) {
 }
 
 function restartGame() {
+  clearSavedGame();
   const clearScene = document.querySelector('.clear-scene');
   if (clearScene) {
     clearScene.dataset.played = 'false';
     clearScene.classList.remove('is-animating', 'skip-animation');
   }
-  const r = RACES[0];
-  state.raceIdx = 0; state.level = 1;
-  state.bossStage = 0; state.reborn = 0;
-  state.dead = false; state.bossOnly = false; state.hpFloor = false; state.undyingUsed = false; state.cleared = false; state.clearSummary = null; state.timeOfDay = 'day'; state.timeTick = 0; state.interventionActive = false; state.forcedInterventionEvent = null; state.devPanelOpen = false; combat = null; setCombatUI && setCombatUI(false);
-  // 새 특성 부여
-  const newTrait = pickTrait();
-  state.traits = [newTrait];
-  const isHomebody = newTrait.id === 'homebody';
-  const isSturdy   = newTrait.id === 'sturdy';
-  state.restLeft = isHomebody ? MAX_REST * 2 : MAX_REST;
-  state.maxHp = isSturdy ? Math.floor(r.hp * 1.5) : r.hp;
-  state.hp = state.maxHp;
-  state.atk = r.atk; state.xp = 0; state.xpNext = 30;
+  state = createNewState();
+  state.titleSeen = true;
+  combat = null;
+  setCombatUI && setCombatUI(false);
   document.getElementById('btn-restart').style.display = 'none';
   const logEl = document.getElementById('log');
   logEl.innerHTML = '';
   log('▶ 새로운 생이 시작되었다...', 'system');
   if (state.traits && state.traits[0]) log(`  ✨ 공용 특성 부여: ${state.traits.map(t=>t.icon+' '+t.name).join(', ')}`, 'rebirth');
   updateUI();
+  saveGame();
 }
 
 function rebirth(boss) {
@@ -2785,12 +2881,8 @@ function showInfo() {
   state.showingInfo = false;
 }
 
-// 게임 시작 시 특성 부여
-const initTrait = pickTrait();
-state.traits = [initTrait];
-if (initTrait.id === 'homebody') state.restLeft = MAX_REST * 2;
-if (initTrait.id === 'sturdy') { state.maxHp = Math.floor(state.maxHp * 1.5); state.hp = state.maxHp; }
 updateUI();
+updateContinueButton();
 document.getElementById('clear-panel')?.addEventListener('pointerdown', skipClearAnimation);
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
@@ -2800,7 +2892,8 @@ document.addEventListener('click', e => {
 });
 // 초기 로그에 특성 표시
 setTimeout(() => {
-  if (state.traits && state.traits[0]) log(`  ✨ 공용 특성 부여: ${state.traits.map(t=>t.icon+' '+t.name).join(', ')}`, 'rebirth');
+  if (bootSavedState) log('저장된 윤회가 있습니다. 타이틀에서 이어하기를 선택할 수 있습니다.', 'system');
+  else if (state.traits && state.traits[0]) log(`  ✨ 공용 특성 부여: ${state.traits.map(t=>t.icon+' '+t.name).join(', ')}`, 'rebirth');
 }, 50);
 </script>
 </body>
