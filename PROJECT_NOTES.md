@@ -137,6 +137,12 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - If a save exists, `이어하기` appears on the title screen and restores `localStorage` progress.
   - `윤회 시작` and `규칙 보고 시작` always create a fresh run and overwrite the previous current-progress save.
   - The title overlay does not change the existing initial state; it sits above `#ui-wrap`.
+- Memory album:
+  - `기억의 앨범` now opens a dedicated mobile album overlay (`#album-overlay`) instead of a generic event modal.
+  - The album frame uses a dark fantasy panel style with a header, internal scroll body, and no page navigation buttons.
+  - Ending slots are arranged in a 2-column scroll grid for mobile.
+  - Current slots are locked placeholders for the 6 playable races.
+  - Future work: connect clear records and race-specific ending images to these slots.
 - Auto save:
   - Current progress is stored in `localStorage` under `reincarnationRpgSaveV1`.
   - Saving happens only after the title has been dismissed and when no combat/intervention event is active.

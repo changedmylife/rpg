@@ -237,6 +237,136 @@ document.currentScript.after(link);
   #event-popup .event-effect { color:#FAC775; font-size:12px; line-height:1.55; margin-bottom:14px; }
   #event-popup .event-choices { display:grid; gap:8px; }
   #event-popup .event-choices button { width:100%; text-align:left; padding:10px 12px; }
+  #album-overlay {
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:999;
+    align-items:center;
+    justify-content:center;
+    padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+    background:rgba(0,0,0,0.82);
+  }
+  #album-panel {
+    width:min(430px, 100%);
+    max-height:min(86dvh, 760px);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border:1px solid rgba(250,199,117,0.34);
+    border-radius:12px;
+    background:
+      linear-gradient(180deg, rgba(23,17,31,0.96), rgba(8,12,22,0.98)),
+      radial-gradient(circle at 50% 0%, rgba(127,119,221,0.26), transparent 48%);
+    box-shadow:0 24px 70px rgba(0,0,0,0.7), inset 0 0 28px rgba(250,199,117,0.06);
+    animation:popupIn 0.28s ease-out forwards;
+  }
+  .album-header {
+    position:relative;
+    padding:12px 44px 10px;
+    text-align:center;
+    border-bottom:1px solid rgba(250,199,117,0.2);
+    background:linear-gradient(180deg, rgba(36,25,47,0.92), rgba(15,16,29,0.88));
+  }
+  .album-header::before,
+  .album-header::after {
+    content:"";
+    position:absolute;
+    top:50%;
+    width:38px;
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(250,199,117,0.62));
+  }
+  .album-header::before { left:12px; }
+  .album-header::after { right:12px; transform:scaleX(-1); }
+  .album-kicker { color:#AFA9EC; font-size:10px; letter-spacing:0.16em; margin-bottom:3px; }
+  .album-title { color:#fff; font-size:20px; font-weight:800; line-height:1.2; }
+  .album-close {
+    position:absolute;
+    right:8px;
+    top:8px;
+    width:30px;
+    height:30px;
+    min-height:0;
+    padding:0;
+    border-radius:7px;
+    background:rgba(0,0,0,0.38);
+    border-color:rgba(255,255,255,0.14);
+    color:rgba(255,255,255,0.82);
+    font-size:16px;
+  }
+  .album-body {
+    overflow-y:auto;
+    padding:12px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(250,199,117,0.38) rgba(0,0,0,0.22);
+  }
+  .album-body::-webkit-scrollbar { width:4px; }
+  .album-body::-webkit-scrollbar-track { background:rgba(0,0,0,0.22); border-radius:999px; }
+  .album-body::-webkit-scrollbar-thumb { background:rgba(250,199,117,0.38); border-radius:999px; }
+  .album-desc {
+    color:rgba(238,240,248,0.7);
+    font-size:11px;
+    line-height:1.55;
+    margin-bottom:10px;
+    text-align:center;
+  }
+  .album-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .album-slot {
+    position:relative;
+    aspect-ratio:3 / 4;
+    overflow:hidden;
+    border-radius:8px;
+    border:0.5px solid rgba(250,199,117,0.26);
+    background:
+      linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)),
+      radial-gradient(circle at 50% 38%, rgba(127,119,221,0.16), transparent 42%),
+      rgba(0,0,0,0.44);
+    box-shadow:inset 0 0 22px rgba(0,0,0,0.5);
+  }
+  .album-slot.locked::before {
+    content:"";
+    position:absolute;
+    inset:8px;
+    border:0.5px solid rgba(255,255,255,0.08);
+    border-radius:6px;
+  }
+  .album-slot-icon {
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:rgba(255,255,255,0.28);
+    font-size:34px;
+    filter:grayscale(0.35);
+  }
+  .album-slot-label {
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:7px 6px;
+    background:linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
+    color:rgba(255,255,255,0.76);
+    font-size:10.5px;
+    font-weight:700;
+    text-align:center;
+  }
+  .album-empty {
+    margin-top:10px;
+    padding:9px 10px;
+    border-radius:8px;
+    background:rgba(0,0,0,0.34);
+    color:rgba(250,199,117,0.78);
+    font-size:11px;
+    line-height:1.45;
+    text-align:center;
+  }
 
   /* ── 스프라이트 애니메이션 ── */
   /* mob sprite via canvas */
@@ -727,6 +857,27 @@ document.currentScript.after(link);
     <button class="title-start" onclick="startGameFromTitle()">윤회 시작</button>
     <button class="title-info" onclick="startGameFromTitle(true)">규칙 보고 시작</button>
     <button class="title-album" onclick="showAlbumPreview()">기억의 앨범</button>
+  </div>
+</div>
+<div id="album-overlay" style="display:none;">
+  <div id="album-panel">
+    <div class="album-header">
+      <div class="album-kicker">MEMORIES OF REBIRTH</div>
+      <div class="album-title">기억의 앨범</div>
+      <button class="album-close" onclick="closeAlbumPreview()" aria-label="앨범 닫기">×</button>
+    </div>
+    <div class="album-body">
+      <div class="album-desc">클리어한 종족의 마지막 생과 엔딩 이미지가 이곳에 기록됩니다.</div>
+      <div class="album-grid" id="album-grid">
+        <div class="album-slot locked"><div class="album-slot-icon">🧑</div><div class="album-slot-label">인간</div></div>
+        <div class="album-slot locked"><div class="album-slot-icon">💀</div><div class="album-slot-label">스켈레톤</div></div>
+        <div class="album-slot locked"><div class="album-slot-icon">🧛</div><div class="album-slot-label">흡혈귀</div></div>
+        <div class="album-slot locked"><div class="album-slot-icon">💩</div><div class="album-slot-label">응아 몬스터</div></div>
+        <div class="album-slot locked"><div class="album-slot-icon">🌿</div><div class="album-slot-label">대지의 정령</div></div>
+        <div class="album-slot locked"><div class="album-slot-icon">🧝</div><div class="album-slot-label">엘프</div></div>
+      </div>
+      <div class="album-empty">아직 열린 기억이 없습니다. 10스테이지를 클리어하면 이곳에 첫 기록이 남습니다.</div>
+    </div>
   </div>
 </div>
 <div id="ui-wrap">
@@ -1269,13 +1420,17 @@ function continueSavedGame() {
   saveGame();
 }
 
-async function showAlbumPreview() {
-  await showInterventionModal({
-    title:'기억의 앨범',
-    desc:'아직 봉인된 기록입니다.\n클리어한 종족의 마지막 생, 엔딩 이미지, 특성 조합이 이곳에 남게 됩니다.',
-    effect:'예정: 종족별 엔딩 이미지 / 클리어 기록 / 마지막 생의 기록 다시보기',
-    choices:[{ label:'닫기', value:'close' }],
-  });
+function showAlbumPreview() {
+  const overlay = document.getElementById('album-overlay');
+  const body = overlay?.querySelector('.album-body');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  if (body) body.scrollTop = 0;
+}
+
+function closeAlbumPreview() {
+  const overlay = document.getElementById('album-overlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 function beginCombat(nextCombat) {
@@ -2884,6 +3039,9 @@ function showInfo() {
 updateUI();
 updateContinueButton();
 document.getElementById('clear-panel')?.addEventListener('pointerdown', skipClearAnimation);
+document.getElementById('album-overlay')?.addEventListener('click', e => {
+  if (e.target.id === 'album-overlay') closeAlbumPreview();
+});
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
   if (!btn || btn.disabled) return;
