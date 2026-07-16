@@ -76,6 +76,63 @@ document.currentScript.after(link);
     position:relative; z-index:1; display:flex; flex-direction:column; flex:1; height:100dvh; min-height:0; overflow:hidden;
     padding:calc(var(--screen-gutter) + env(safe-area-inset-top)) calc(var(--screen-gutter) + env(safe-area-inset-right)) calc(var(--screen-gutter) + env(safe-area-inset-bottom)) calc(var(--screen-gutter) + env(safe-area-inset-left));
   }
+  #title-screen {
+    position:absolute;
+    inset:0;
+    z-index:50;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-end;
+    gap:16px;
+    padding:calc(24px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) calc(22px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.55) 48%, rgba(0,0,0,0.92) 100%),
+      url("Title_img_v1.png");
+    background-size:cover;
+    background-position:center top;
+    transition:opacity 0.32s ease-out, visibility 0.32s ease-out;
+  }
+  #title-screen.is-hidden {
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+  .title-mark { color:#FAC775; font-size:12px; font-weight:700; letter-spacing:0.16em; }
+  .title-heading { color:#fff; font-size:clamp(32px, 9vw, 44px); line-height:1.05; font-weight:800; text-shadow:0 8px 30px rgba(0,0,0,0.75); }
+  .title-copy { color:rgba(236,239,246,0.78); font-size:13px; line-height:1.65; max-width:360px; }
+  .title-goal {
+    display:grid;
+    gap:6px;
+    padding:12px;
+    border-radius:10px;
+    border:0.5px solid rgba(255,255,255,0.14);
+    background:rgba(0,0,0,0.42);
+    backdrop-filter:blur(5px);
+  }
+  .title-goal-row { display:flex; align-items:center; gap:8px; color:rgba(255,255,255,0.84); font-size:12px; line-height:1.35; }
+  .title-goal-row span:first-child { width:20px; text-align:center; flex-shrink:0; }
+  .title-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .title-start {
+    grid-column:1 / -1;
+    min-height:46px;
+    border:none;
+    background:linear-gradient(135deg, #E24B4A, #EF9F27);
+    font-size:15px;
+    font-weight:800;
+    box-shadow:0 12px 30px rgba(226,75,74,0.28);
+  }
+  .title-info {
+    min-height:40px;
+    background:rgba(0,0,0,0.58);
+    border-color:rgba(175,169,236,0.32);
+    color:#D7D3FF;
+  }
+  .title-album {
+    min-height:40px;
+    background:rgba(29,158,117,0.18);
+    border-color:rgba(93,202,165,0.36);
+    color:#A8F0D7;
+  }
   #log { background: rgba(0,0,0,0.1); border: 0.5px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 0.75rem; height: 180px; overflow-y: auto; font-size: 12px; line-height: 1.7; color: rgba(255,255,255,0.7); margin-bottom: 8px; backdrop-filter:blur(4px); }
   #log p { margin-bottom: 4px; }
   #log p.highlight { color: #fff; font-weight: 500; }
@@ -653,7 +710,25 @@ document.currentScript.after(link);
 </style>
 </head>
 <body>
-<div id="game"><div id="ui-wrap">
+<div id="game">
+<div id="title-screen">
+  <div class="title-mark">REINCARNATION RPG</div>
+  <div>
+    <div class="title-heading">환생 RPG</div>
+    <div class="title-copy">죽음은 끝이 아니다. 사냥으로 성장하고, 보스에게 도전하고, 새로운 종족으로 환생하며 윤회의 끝에 도달하세요.</div>
+  </div>
+  <div class="title-goal">
+    <div class="title-goal-row"><span>⚔️</span><strong>사냥</strong>으로 레벨과 공격력을 키웁니다.</div>
+    <div class="title-goal-row"><span>💀</span><strong>보스</strong>에게 패배해도 새로운 종족으로 환생합니다.</div>
+    <div class="title-goal-row"><span>🌑</span><strong>10스테이지</strong> 이클립스 퀸을 쓰러뜨리면 클리어입니다.</div>
+  </div>
+  <div class="title-actions">
+    <button class="title-start" onclick="startGameFromTitle()">윤회 시작</button>
+    <button class="title-info" onclick="startGameFromTitle(true)">규칙 보고 시작</button>
+    <button class="title-album" onclick="showAlbumPreview()">기억의 앨범</button>
+  </div>
+</div>
+<div id="ui-wrap">
 
   <!-- ── 상단 HUD ── -->
   <div id="top-hud">
@@ -1079,9 +1154,27 @@ function pickTrait() {
   return TRAITS[rand(0, TRAITS.length - 1)];
 }
 
-let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false, timeOfDay:'day', timeTick:0, interventionActive:false, forcedInterventionEvent:null, devPanelOpen:false };
+let state = { raceIdx:0, level:1, hp:30, maxHp:30, atk:10, xp:0, xpNext:30, reborn:0, dead:false, bossOnly:false, restLeft:MAX_REST, bossStage:0, hpFloor:false, traits:[], undyingUsed:false, cleared:false, timeOfDay:'day', timeTick:0, interventionActive:false, forcedInterventionEvent:null, devPanelOpen:false, titleSeen:false };
 let combat = null; // 현재 전투 상태
 let combatSeq = 0;
+
+function startGameFromTitle(openInfo=false) {
+  const title = document.getElementById('title-screen');
+  if (title) title.classList.add('is-hidden');
+  state.titleSeen = true;
+  log('목표: 사냥으로 성장하고, 보스를 쓰러뜨리며 10스테이지를 클리어하세요.', 'system');
+  log('보스에게 패배해도 새로운 종족으로 환생해 다시 도전합니다.', 'system');
+  if (openInfo) setTimeout(showInfo, 220);
+}
+
+async function showAlbumPreview() {
+  await showInterventionModal({
+    title:'기억의 앨범',
+    desc:'아직 봉인된 기록입니다.\n클리어한 종족의 마지막 생, 엔딩 이미지, 특성 조합이 이곳에 남게 됩니다.',
+    effect:'예정: 종족별 엔딩 이미지 / 클리어 기록 / 마지막 생의 기록 다시보기',
+    choices:[{ label:'닫기', value:'close' }],
+  });
+}
 
 function beginCombat(nextCombat) {
   combat = { ...nextCombat, token: ++combatSeq };
@@ -1685,6 +1778,50 @@ function updateSkillBtn() {
   }
 }
 
+let audioCtx = null;
+function getAudioCtx() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  if (!audioCtx) audioCtx = new Ctx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playAttackSound(kind='slash') {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = kind === 'magic' ? 'sine' : 'sawtooth';
+  osc.frequency.setValueAtTime(kind === 'magic' ? 660 : 520, now);
+  osc.frequency.exponentialRampToValueAtTime(kind === 'magic' ? 980 : 150, now + 0.08);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(kind === 'magic' ? 0.08 : 0.06, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.12);
+}
+
+function playHitSound(weight='normal') {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  const startFreq = weight === 'heavy' ? 150 : 210;
+  osc.frequency.setValueAtTime(startFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(70, now + 0.09);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(weight === 'heavy' ? 0.1 : 0.07, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.15);
+}
+
 function updateCombatBar() {
   if (!combat) return;
   const ePct = Math.max(0, combat.enemyHp / combat.maxEnemyHp * 100);
@@ -1782,6 +1919,7 @@ function applyMobAttack() {
   if (race.canDodge && Math.random() < 0.5) { log(`  💨 회피! 피해 없음`); dmg = 0; }
   if (dmg > 0) {
     state.hp = Math.max(0, state.hp - dmg);
+    playHitSound(bigAttackWarned ? 'heavy' : 'normal');
     const defNote = bigAttackWarned && combat.defending ? ' (강공격 방어 80%감소)' : combat.defending ? ' (방어 60%감소)' : '';
     log(`  ${bigAttackWarned ? '💥 강공격!' : '적 공격'} ${dmg}${defNote}  HP ${state.hp}/${state.maxHp}`, bigAttackWarned ? 'danger' : '');
     // 응아 방어 흡수 — 방어 중 50% 확률로 피해만큼 회복
@@ -1838,6 +1976,7 @@ function applyBossAttack() {
       if (s === 'flame' && Math.random() < 0.4) {
         const fd = Math.floor(state.maxHp * 0.04);
         state.hp = Math.max(0, state.hp - fd);
+        if (fd > 0) playHitSound('normal');
         bossNote += ` 🔥화염장판-${fd}`;
       }
       if (s === 'vampire') { combat.eclipseVampire = true; bossNote += ' 🩸흡혈!'; }
@@ -1866,6 +2005,7 @@ function applyBossAttack() {
   if (bossNote) log(`  ${bossNote}`, bigWarned ? 'danger' : 'system');
   if (bossAtk > 0) {
     state.hp = Math.max(0, state.hp - bossAtk);
+    playHitSound(bigWarned ? 'heavy' : 'normal');
     log(`  보스 공격 ${bossAtk}${combat.defending ? (bigWarned ? ' (강공격 방어 80%감소)' : ' (방어 60%감소)') : ''}  HP ${state.hp}/${state.maxHp}`, state.hp < state.maxHp * 0.3 ? 'danger' : '');
     // 응아 방어 흡수
     if (combat.defending && RACES[state.raceIdx].defenseLeech && Math.random() < 0.5) {
@@ -1928,6 +2068,7 @@ function combatAction(action) {
   // ── 내 행동 ──
   if (action === 'attack') {
     const vampireCost = applyVampireAttackCost();
+    playAttackSound(isMagicAtkFixed ? 'magic' : 'slash');
     const base = state.atk + rand(0, 5);
     const { atk: atkRaw, isCrit } = calcMyAtk(base, m);
     let atk = atkRaw;
@@ -1943,6 +2084,7 @@ function combatAction(action) {
     }
     if (mirrorDodged) atk = 0;
     combat.enemyHp = Math.max(0, combat.enemyHp - atk);
+    if (!mirrorDodged && atk > 0) playHitSound('normal');
     // 히트 이펙트
     const sp = document.getElementById('enemy-sprite-anim');
     if (sp) { sp.classList.add('sprite-hit'); scheduleCombat(300, actionToken, () => { sp.classList.remove('sprite-hit'); }); }
@@ -1980,6 +2122,7 @@ function combatAction(action) {
     const id = race.id;
     combat.skillCooldown = id === 'spirit' ? 4 : id === 'elf' ? 6 : 3;
     if (id === 'human') {
+      playAttackSound('slash');
       let h1 = Math.floor((state.atk + rand(0,5)) * 0.8);
       let h2 = Math.floor((state.atk + rand(0,5)) * 0.8);
       if (hasTrait('instinct') && isMeleeAttackRace(race)) {
@@ -2011,6 +2154,7 @@ function combatAction(action) {
       if (mirror1) h1 = 0;
       comboDamage += h1;
       combat.enemyHp = Math.max(0, combat.enemyHp - h1);
+      if (!mirror1 && h1 > 0) playHitSound('normal');
       const leechRate = getVampireLeechRate();
       if (!mirror1 && leechRate > 0) {
         const leech1 = Math.floor(h1 * leechRate);
@@ -2035,10 +2179,12 @@ function combatAction(action) {
       }
       // 2타 딜레이 후 반영
       scheduleCombat(400, actionToken, () => {
+        playAttackSound('slash');
         const mirror2 = combat.isBoss && combat.boss.stage === 2 && Math.random() < 0.5;
         if (mirror2) h2 = 0;
         comboDamage += h2;
         combat.enemyHp = Math.max(0, combat.enemyHp - h2);
+        if (!mirror2 && h2 > 0) playHitSound('normal');
         if (!mirror2 && leechRate > 0) {
           const leech2 = Math.floor(h2 * leechRate);
           state.hp = Math.min(state.maxHp, state.hp + leech2);
@@ -2065,6 +2211,7 @@ function combatAction(action) {
       }, 400);
       log(`  ⚔️⚔️ 연속 공격!`);
     } else if (id === 'vampire') {
+      playAttackSound('slash');
       const base = Math.floor((state.atk + rand(0, 5)) * (isNight() ? 1.6 : 1.15));
       const { atk: atkRaw, isCrit } = calcMyAtk(base, m);
       let bite = atkRaw;
@@ -2078,6 +2225,7 @@ function combatAction(action) {
       }
       if (mirrorDodged) bite = 0;
       combat.enemyHp = Math.max(0, combat.enemyHp - bite);
+      if (!mirrorDodged && bite > 0) playHitSound('normal');
       const leechRate = Math.max(getVampireLeechRate(), isNight() ? 0.55 : 0.25);
       const leech = mirrorDodged ? 0 : Math.floor(bite * leechRate);
       if (leech > 0) state.hp = Math.min(state.maxHp, state.hp + leech);

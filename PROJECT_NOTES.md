@@ -26,6 +26,8 @@ The game is a Korean reincarnation RPG. The player hunts monsters, levels up, fi
   - Current final clear screen image. Must remain next to the HTML file unless the HTML path is updated.
 - `Clear_img.png`
   - Previous final clear screen image, kept as a backup.
+- `Title_img_v1.png`
+  - Current title screen key visual. Must remain next to the HTML file unless the title CSS path is updated.
 
 ## Current Important Settings
 
@@ -44,6 +46,7 @@ Keep this structure when uploading to GitHub/GitHub Pages or similar static host
 ```text
 /
 ├─ reincarnation_rpg_v2_no_duplicate_ids.html
+├─ Title_img_v1.png
 ├─ Clear_img_v2.png
 ├─ Clear_img.png
 └─ assets/
@@ -125,6 +128,13 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - `showInfo()` now acts as a broader in-game rule reference.
   - It covers basic progression, combat rules, day/night rules, intervention event chance/effects, races, shared traits, boss stages, clear records, and DEV panel notes.
   - Event help is generated from `INTERVENTION_EVENT_TABLE` weights, with separate Korean effect descriptions in the HTML.
+- Title/onboarding:
+  - A title screen overlay (`#title-screen`) introduces the goal before the first play interaction.
+  - The title screen uses `Title_img_v1.png`, a generated reincarnation gate key visual with race silhouettes and a dark lower text area.
+  - It explains the core loop: hunt, challenge bosses, reincarnate on defeat, and clear stage 10.
+  - `startGameFromTitle(openInfo)` hides the overlay and can optionally open the info/help window.
+  - The title screen includes `기억의 앨범`, currently a preview popup for future race-specific ending images and clear records.
+  - The title overlay does not change the existing initial state; it sits above `#ui-wrap`.
 - Vampire race and day/night:
   - `vampire` was added as a reincarnation race.
   - Vampire can appear in any boss rebirth pool only if the player died while holding the common `vampire` trait.
@@ -172,6 +182,11 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - Stun consumption logs whether the current enemy action was canceled and whether any additional action cancels remain.
   - Enemy stun state is also shown visually with `#enemy-stun-bubble` near the enemy sprite.
   - The bubble displays `xN`, matching the remaining enemy action cancellations stored in `combat.stunned`.
+- Combat sound:
+  - Simple attack and hit sounds are generated with the browser Web Audio API.
+  - No external audio assets are required.
+  - Player normal attacks, human double attacks, and vampire Blood Thirst play attack sounds.
+  - Successful enemy/player damage events play short hit sounds, with heavier hits for strong attacks.
 - Balance data externalization:
   - `RACES`, `MONSTERS`, `TRAITS`, `BOSSES`, `MAX_REST` moved to `assets/balance_data.js`.
 - Boss 3 sprite:
