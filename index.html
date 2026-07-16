@@ -837,7 +837,7 @@ document.currentScript.after(link);
   .clear-scene.is-animating .clear-title,
   .clear-scene.is-animating .clear-copy,
   .clear-scene.is-animating .clear-record,
-  .clear-scene.is-animating .clear-restart-btn {
+  .clear-scene.is-animating .clear-actions {
     opacity:0;
     animation-fill-mode:forwards;
     animation-timing-function:ease-out;
@@ -846,12 +846,12 @@ document.currentScript.after(link);
   .clear-scene.is-animating .clear-title { animation-name:clearSlideIn; animation-duration:0.4s; animation-delay:1.18s; }
   .clear-scene.is-animating .clear-copy { animation-name:clearSlideIn; animation-duration:0.4s; animation-delay:1.88s; }
   .clear-scene.is-animating .clear-record { animation-name:clearFadeIn; animation-duration:0.35s; animation-delay:2.24s; }
-  .clear-scene.is-animating .clear-restart-btn { animation-name:clearSlideIn; animation-duration:0.35s; animation-delay:2.34s; }
+  .clear-scene.is-animating .clear-actions { animation-name:clearSlideIn; animation-duration:0.35s; animation-delay:2.34s; }
   .clear-scene.skip-animation .clear-img,
   .clear-scene.skip-animation .clear-title,
   .clear-scene.skip-animation .clear-copy,
   .clear-scene.skip-animation .clear-record,
-  .clear-scene.skip-animation .clear-restart-btn {
+  .clear-scene.skip-animation .clear-actions {
     opacity:1 !important;
     transform:none !important;
     filter:none !important;
@@ -862,7 +862,7 @@ document.currentScript.after(link);
     .clear-scene.is-animating .clear-title,
     .clear-scene.is-animating .clear-copy,
     .clear-scene.is-animating .clear-record,
-    .clear-scene.is-animating .clear-restart-btn {
+    .clear-scene.is-animating .clear-actions {
       opacity:1;
       transform:none;
       filter:none;
@@ -883,18 +883,32 @@ document.currentScript.after(link);
   .clear-record-row { color:rgba(255,255,255,0.75); font-size:clamp(9.5px, 1.35dvh, 11px); line-height:1.28; }
   .clear-record-row strong { color:#fff; font-weight:600; }
   .clear-record-row.traits { grid-column:1 / -1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .clear-restart-btn {
+  .clear-actions {
+    width:100%;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    flex-shrink:0;
+  }
+  .clear-restart-btn,
+  .clear-title-btn {
     width:100%;
     min-height:clamp(34px, 5dvh, 44px);
     padding:clamp(8px, 1.4dvh, 12px);
-    flex-shrink:0;
-    background:#E24B4A;
-    color:#fff;
-    border:none;
     border-radius:8px;
     font-size:clamp(12px, 1.8dvh, 14px);
     font-weight:600;
     cursor:pointer;
+  }
+  .clear-restart-btn {
+    background:#E24B4A;
+    color:#fff;
+    border:none;
+  }
+  .clear-title-btn {
+    background:rgba(0,0,0,0.42);
+    color:rgba(255,255,255,0.86);
+    border:0.5px solid rgba(250,199,117,0.32);
   }
   .is-clear #top-hud { margin-bottom:4px; padding:5px 7px; }
   .is-clear #meta-group { gap:3px; margin-bottom:4px; flex-shrink:0; }
@@ -999,18 +1013,8 @@ document.currentScript.after(link);
     </div>
     <div class="album-body">
       <div class="album-desc">클리어한 종족의 마지막 생과 엔딩 이미지가 이곳에 기록됩니다.</div>
-      <div class="album-grid" id="album-grid">
-        <div class="album-slot unlocked" role="button" tabindex="0" onclick="showEndingCredits('human')" onkeydown="handleAlbumSlotKey(event, 'human')" aria-label="인간 엔딩 보기">
-          <img class="album-slot-img" src="assets/endings/human_ending_v1.png" alt="인간 엔딩">
-          <div class="album-slot-label">인간</div>
-        </div>
-        <div class="album-slot locked"><div class="album-slot-icon">💀</div><div class="album-slot-label">스켈레톤</div></div>
-        <div class="album-slot locked"><div class="album-slot-icon">🧛</div><div class="album-slot-label">흡혈귀</div></div>
-        <div class="album-slot locked"><div class="album-slot-icon">💩</div><div class="album-slot-label">응아 몬스터</div></div>
-        <div class="album-slot locked"><div class="album-slot-icon">🌿</div><div class="album-slot-label">대지의 정령</div></div>
-        <div class="album-slot locked"><div class="album-slot-icon">🧝</div><div class="album-slot-label">엘프</div></div>
-      </div>
-      <div class="album-empty">인간의 마지막 기억이 기록되었습니다. 다른 종족의 엔딩은 이후 순차적으로 추가됩니다.</div>
+      <div class="album-grid" id="album-grid"></div>
+      <div class="album-empty" id="album-status">아직 열린 기억이 없습니다. 10스테이지를 클리어하면 이곳에 첫 기록이 남습니다.</div>
     </div>
   </div>
 </div>
@@ -1151,7 +1155,10 @@ document.currentScript.after(link);
           <div class="clear-copy">이클립스 퀸이 쓰러지고, 마지막 생의 기록이 전설로 남았다.</div>
         </div>
         <div class="clear-record" id="clear-record"></div>
-        <button class="clear-restart-btn" onclick="restartGame()">↺ 새 윤회 시작</button>
+        <div class="clear-actions">
+          <button class="clear-title-btn" onclick="returnToTitleScreen()">타이틀로</button>
+          <button class="clear-restart-btn" onclick="restartGame()">↺ 새 윤회 시작</button>
+        </div>
       </div>
     </div>
 
@@ -1448,6 +1455,7 @@ function pickTrait() {
 }
 
 const SAVE_KEY = 'reincarnationRpgSaveV1';
+const ENDING_UNLOCKS_KEY = 'reincarnationRpgEndingUnlocksV1';
 
 function createNewState() {
   const r = RACES[0];
@@ -1561,10 +1569,21 @@ function continueSavedGame() {
   saveGame();
 }
 
+function returnToTitleScreen() {
+  combat = null;
+  closeEndingCredits();
+  closeAlbumPreview();
+  saveGame();
+  updateContinueButton();
+  const title = document.getElementById('title-screen');
+  if (title) title.classList.remove('is-hidden');
+}
+
 function showAlbumPreview() {
   const overlay = document.getElementById('album-overlay');
   const body = overlay?.querySelector('.album-body');
   if (!overlay) return;
+  renderAlbumSlots();
   overlay.style.display = 'flex';
   if (body) body.scrollTop = 0;
 }
@@ -1595,8 +1614,237 @@ const ENDING_CREDITS = {
 그는 앞으로 걸음을 내디뎠다. 빛이 그를 삼켰고, 등 뒤에서 삼백서른일곱 개의 무덤이 조용히 닫혔다.
 
 바람 냄새가 났다. 그는 그 자리에 주저앉아, 처음으로 울었다.`
+  },
+  skeleton: {
+    image:'assets/endings/skeleton_ending_v1.png',
+    alt:'스켈레톤 엔딩',
+    narration:`던전을 나서는 그의 발걸음은, 달그락거렸다.
+
+삼백 번의 생. 아니, 그의 경우에는 삼백 번의 죽음이라 해야 옳았다. 왜곡된 신은 그의 영혼을 뼈에 못 박아두었다. 부서지면 다시 조립되고, 흩어지면 다시 끌어모아지고. 남들은 윤회라도 했지, 그는 매번 같은 뼈로 돌아왔다. 잠들 수도, 죽을 수도 없는 채로.
+
+그래서 그는 신을 부쉈다. 거창한 이유는 아니었다. 그냥, 너무 오래 피곤했다.
+
+던전 밖은 새벽이었다. 그는 언덕 위에 서서 지평선이 밝아오는 것을 지켜보았다. 언데드에게 햇빛은 소멸의 빛. 어쩌면 이대로 재가 될지도 모른다고 생각했다. 그래도 도망치지 않았다. 삼백 번의 생 동안 단 한 번도 보지 못한 것이, 바로 이것이었으니까.
+
+해가 떠올랐다.
+
+빛이 두개골을 지나 갈비뼈 사이사이로 쏟아져 들어왔다. 따뜻했다. 그리고, 아무 일도 일어나지 않았다. 신이 사라지며 저주도 함께 걷힌 것이다. 그는 이제 언제든 잠들 수 있는 몸이었다. 뼈 마디마디에 스며드는 온기를 느끼며, 그는 천천히 깨달았다. 자유란 죽을 수 있게 되는 것이 아니라, 죽음마저 선택이 되는 것임을.
+
+"하……."
+
+그는 풀밭에 벌러덩 드러누웠다. 대지의 정령이 되찾은 부드러운 땅이, 앙상한 등을 포근하게 받쳐주었다.
+
+"영원한 안식이니 뭐니 하는 건…… 일단 낮잠 자고 나서 생각한다."
+
+멀리서 꽃향기가 났다. 어느 촉촉한 영웅이 피워낸 꽃밭의 냄새였다. 그는 눈구멍을 감았다. 뼈밖에 없는 몸이 어떻게 그럴 수 있는지는 모르겠지만, 분명히 감았다.
+
+삼백 번의 생 만에 처음으로, 스켈레톤은 아주 달게 잤다.`
+  },
+  vampire: {
+    image:'assets/endings/vampire_ending_v1.png',
+    alt:'흡혈귀 엔딩',
+    narration:`그가 던전을 나섰을 때, 세상은 밤이었다.
+
+흡혈귀에게는 더없이 어울리는 시간. 하지만 그는 문턱에서 한 발짝도 나아가지 못하고 멈춰 섰다. 붉은 눈이 크게 뜨였다.
+
+하늘에, 달이 있었다.
+
+삼백 번의 생 동안 그가 알던 것은 어둠뿐이었다. 왜곡된 신의 던전은 완벽하게 캄캄했고, 사람들은 흡혈귀라면 그런 곳이 편하리라 생각하겠지만, 천만에. 그 어둠에는 달이 없었다. 별이 없었다. 바람이 없었다. 어둠과 밤이 같은 것이라 믿는 자는, 밤을 한 번도 제대로 살아본 적 없는 자다.
+
+"……아아."
+
+그는 비틀거리며 걸어 나갔다. 은빛 달빛이 창백한 얼굴 위로 쏟아졌다. 풀벌레가 울고 있었다. 서늘한 바람이 낡은 외투 자락을 흔들었다. 멀리 꽃밭이 달빛에 젖어 은은하게 일렁이고, 언덕 위에서는 웬 스켈레톤이 태평하게 코를 고는 소리가 들렸다. 뼈밖에 없는데 어떻게 코를 고는지는 알 수 없었지만.
+
+그는 언덕에 올라 밤하늘 아래 섰다. 목이 말랐다. 삼백 번의 생 내내 그랬듯이. 하지만 지금 이 갈증은 피를 향한 것이 아니었다.
+
+"이건 어둠이 아니야…… 밤이구나."
+
+그는 두 팔을 벌리고 달빛을 그대로 받았다. 마치 다른 이들이 햇살을 쬐듯이.
+
+"영원히 산다는 게 저주인 줄만 알았는데."
+
+입가에 송곳니가 드러났다. 삼백 번의 생 만에 처음 짓는, 진짜 미소였다.
+
+"이런 밤이 영원히 남아 있다면…… 그거, 꽤 괜찮은 형벌이네."
+
+새벽이 가까워지자 그는 서두르지 않고 몸을 돌렸다. 도망치는 발걸음이 아니었다.
+
+"해는 다음에 보지. 밤은 길고…… 나는 이제, 시간이 많으니까."`
+  },
+  elf: {
+    image:'assets/endings/elf_ending_v1.png',
+    alt:'엘프 엔딩',
+    narration:`신이 스러진 자리에서 가장 먼저 돋아난 것은 풀이었다.
+
+왜곡이 걷힌 돌바닥의 갈라진 틈마다 연둣빛 싹이 밀고 올라왔다. 던전이 수천 년 동안 억눌러온 생명이, 주인이 사라지자마자 참았던 숨을 토해내듯이. 엘프는 그 광경을 오래 바라보았다. 삼백 번의 생 동안 돌과 어둠밖에 몰랐던 눈에, 그 작은 초록이 어떤 보물보다 눈부셨다.
+
+그녀는 지팡이를 놓아주었다. 손을 펴자 지팡이는 쓰러지는 대신, 바닥의 틈에 뿌리를 내렸다. 애초에 살아있는 나무의 가지였던 것이다. 삼백 번의 생을 함께 싸워온 그것이 마지막 마력을 다 쓰고, 이제 본래의 모습으로 돌아가고 있었다. 마른 나뭇가지 끝에서 새순이 텄다.
+
+"너부터 먼저 돌아가는구나."
+
+그녀는 웃었다. 갈라진 입술 사이로 나온 웃음은 절반쯤 울음이었다.
+
+무너지는 벽 너머에서 바람이 불어왔다. 흙과 젖은 나뭇잎의 냄새. 손끝에 아직 남은 마력이 저절로 술렁였다. 주문을 외우지 않아도 알 수 있었다. 이 힘은 원래 숲에서 빌려온 것이고, 숲이 지금 그것을 부르고 있다는 걸.
+
+맨발이 던전의 경계를 넘어 흙을 밟았다. 그 순간 몸에 남아 있던 마력이 물이 스미듯 대지로 흘러내려갔다. 가벼웠다. 삼백 번의 생 만에 처음으로, 그녀는 아무것도 아니었고 그래서 전부였다.
+
+"빌린 것은 돌려줬어. 이제 나를 돌려받으러 갈게."
+
+그녀는 가장 오래된 나무의 둥치에 이마를 대고 눈을 감았다.
+
+"내 이름은 잊혀도 좋아…… 숲이 기억할 테니까."
+
+머리카락 사이로 어린 잎이 하나, 조용히 내려앉았다. 숲의 대답이었다.`
+  },
+  poop: {
+    image:'assets/endings/poop_ending_v1.png',
+    alt:'응아 몬스터 엔딩',
+    narration:`신이 스러진 자리에, 그가 있었다. 촉촉하게.
+
+삼백 번의 생이었다. 밟히고, 튕겨나가고, 모험자들의 검에 두 동강 나도 그는 매번 다시 뭉쳐 일어났다. 던전 최하층의 최약체 몬스터. 경험치 3. 아무도 그가 신을 쓰러뜨릴 거라고는 생각하지 않았다. 사실 그 자신도 그랬다.
+
+하지만 왜곡된 신은 몰랐던 것이다. 삼백 번을 밟혀도 형태를 되찾는 존재가 이 세상에서 가장 끈질기다는 것을.
+
+"이겼다…… 내가……."
+
+그는 몸을 부르르 떨었다. 표면에서 김이 모락모락 피어올랐다. 감동의 김이었다.
+
+무너지는 벽 틈으로 빛이 들었다. 그는 출구를 향해 굴러갔다. 데굴, 데굴. 위대한 영웅의 개선 행진치고는 소리가 좀 그랬지만, 걸음걸이로 영웅을 판단해서는 안 되는 법이다.
+
+경계를 넘자, 흙이었다. 진짜 흙. 던전의 차가운 돌바닥이 아니라, 따뜻하고 부드러운 대지.
+
+그 순간 그는 알았다. 자신이 어디로 돌아가야 하는지를. 엘프는 숲으로 돌아갔고 인간은 빛으로 나아갔지만, 그에게는 그보다 더 오래된 약속이 있었다.
+
+"나는…… 거름이 될 거야."
+
+그의 몸이 조금씩 대지에 스며들기 시작했다. 두렵지 않았다. 이것은 소멸이 아니라 순환이니까.
+
+"똥이라고 비웃었지…… 하지만 봐. 꽃은 나 없이 못 펴."
+
+봄이 왔을 때, 그 자리에는 던전 어디에서도 본 적 없는 꽃밭이 펼쳐졌다.
+
+그리고 그 꽃밭 한가운데에, 그가 있었다. 촉촉하게.
+
+생각해보면 당연한 일이었다. 삼백 번을 밟혀도 다시 뭉친 몸이다. 흙에 스며든 정도로 사라질 리가 없었다. 그는 봄비를 머금고 어느 때보다 탱글탱글한 모습으로 돌아와, 자기가 피운 꽃들 사이에서 느긋하게 햇볕을 쬐고 있었다.
+
+"거름도 되고, 나도 있고. 이게 되네."
+
+지나가던 모험자들이 꽃향기에 이끌려 다가왔다가 그를 발견하고 기겁했지만, 아무래도 상관없었다. 꽃밭의 주인은 그였고, 여기서는 아무도 그를 밟지 않았다.
+
+영웅은 그렇게, 향기로운 곳에서 오래오래 살았다.`
+  },
+  spirit: {
+    image:'assets/endings/spirit_ending_v1.png',
+    alt:'대지의 정령 엔딩',
+    narration:`신이 스러지자, 던전이 울기 시작했다.
+
+돌벽이 낮게 진동하고 바닥의 균열마다 오래된 숨소리가 새어 나왔다. 모험자였다면 붕괴의 전조라 여기고 도망쳤겠지만, 그녀는 알고 있었다. 이것은 무너지는 소리가 아니라, 깨어나는 소리라는 것을.
+
+이 던전의 돌 하나하나가, 본래 그녀의 몸이었다.
+
+왜곡된 신은 대지의 정령을 죽이지 못해 가둬버렸다. 아니, 가둔 정도가 아니었다. 그녀의 몸을 뜯어 벽을 쌓고, 뼈를 깎아 기둥을 세우고, 그 감옥 안에 그녀의 심장만 남겨두었다. 삼백 번의 생 동안 그녀는 자기 자신의 시체 속을 헤매었던 것이다.
+
+그러니 그녀에게 탈출이란, 문을 나서는 일이 아니었다.
+
+"……돌아와."
+
+그녀가 손을 바닥에 대자, 던전 전체가 응답했다. 벽이 허물어지며 흙으로 풀어지고, 기둥이 무너지며 바위산으로 되돌아갔다. 미궁의 복도였던 것들이 계곡이 되고, 보스의 방이었던 곳이 분지가 되어 하늘을 향해 열렸다. 수천 년 만에 처음으로 던전의 가장 깊은 곳까지 비가 닿았다.
+
+그녀는 그 비를 맞으며 서 있었다. 흙으로 빚은 어깨 위로 빗물이 흘러내려, 마른 몸에 강줄기 같은 결을 새겼다.
+
+"나는 나가지 않아. 여기가 다시 내가 되는 거야."
+
+발밑에서부터 초록이 번져나갔다. 인간이 걸어 나간 빛도, 엘프가 돌아간 숲도, 응아가 피운 꽃밭도, 결국 전부 그녀의 살갗 위에 있었다.
+
+그녀는 하늘을 올려다보며 아주 오래, 깊게 숨을 쉬었다.
+
+"오래 참았다…… 이제 마음껏 자라렴."
+
+그날부터 그 땅에서는, 무엇을 심어도 잘 자랐다.`
   }
 };
+
+const ENDING_ALBUM_SLOTS = [
+  { id:'human', icon:'🧑', label:'인간' },
+  { id:'skeleton', icon:'💀', label:'스켈레톤' },
+  { id:'vampire', icon:'🧛', label:'흡혈귀' },
+  { id:'poop', icon:'💩', label:'응아 몬스터' },
+  { id:'spirit', icon:'🌿', label:'대지의 정령' },
+  { id:'elf', icon:'🧝', label:'엘프' },
+];
+
+function loadEndingUnlocks() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ENDING_UNLOCKS_KEY) || '[]');
+    return new Set(Array.isArray(raw) ? raw.filter(id => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveEndingUnlocks(unlocks) {
+  try {
+    localStorage.setItem(ENDING_UNLOCKS_KEY, JSON.stringify([...unlocks]));
+  } catch {}
+}
+
+function unlockEnding(raceId) {
+  if (!raceId || !ENDING_CREDITS[raceId]) return;
+  const unlocks = loadEndingUnlocks();
+  if (unlocks.has(raceId)) return;
+  unlocks.add(raceId);
+  saveEndingUnlocks(unlocks);
+}
+
+function syncCurrentClearToAlbum() {
+  if (!state?.cleared) return;
+  const raceId = RACES[state.raceIdx]?.id;
+  unlockEnding(raceId);
+}
+
+function renderAlbumSlots() {
+  const grid = document.getElementById('album-grid');
+  const status = document.getElementById('album-status');
+  if (!grid) return;
+  syncCurrentClearToAlbum();
+  const unlocks = loadEndingUnlocks();
+  let opened = 0;
+  grid.innerHTML = '';
+  ENDING_ALBUM_SLOTS.forEach(slot => {
+    const credit = ENDING_CREDITS[slot.id];
+    const isUnlocked = unlocks.has(slot.id) && !!credit;
+    const el = document.createElement('div');
+    el.className = `album-slot ${isUnlocked ? 'unlocked' : 'locked'}`;
+    if (isUnlocked) {
+      opened++;
+      el.setAttribute('role', 'button');
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', `${slot.label} 엔딩 보기`);
+      el.addEventListener('click', () => showEndingCredits(slot.id));
+      el.addEventListener('keydown', event => handleAlbumSlotKey(event, slot.id));
+      const img = document.createElement('img');
+      img.className = 'album-slot-img';
+      img.src = credit.image;
+      img.alt = `${slot.label} 엔딩`;
+      el.appendChild(img);
+    } else {
+      const icon = document.createElement('div');
+      icon.className = 'album-slot-icon';
+      icon.textContent = slot.icon;
+      el.appendChild(icon);
+    }
+    const label = document.createElement('div');
+    label.className = 'album-slot-label';
+    label.textContent = slot.label;
+    el.appendChild(label);
+    grid.appendChild(el);
+  });
+  if (status) {
+    status.textContent = opened
+      ? `${opened}개의 마지막 기억이 기록되었습니다. 잠긴 종족은 해당 종족으로 10스테이지를 클리어하면 열립니다.`
+      : '아직 열린 기억이 없습니다. 해당 종족으로 10스테이지를 클리어하면 이곳에 기록됩니다.';
+  }
+}
 
 function showEndingCredits(endingId) {
   const credit = ENDING_CREDITS[endingId];
@@ -2831,6 +3079,7 @@ function endCombat(victory, token) {
         log(`  윤회의 고리가 천천히 풀리기 시작한다.`, 'system');
         state.clearSummary = createClearSummary();
         state.cleared = true;
+        unlockEnding(RACES[state.raceIdx]?.id);
         state.dead = true;
         state.bossOnly = true;
         state.bossStage = BOSSES.length;

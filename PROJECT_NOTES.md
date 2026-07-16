@@ -31,6 +31,21 @@ The game is a Korean reincarnation RPG. The player hunts monsters, levels up, fi
 - `assets/endings/human_ending_v1.png`
   - Current human race ending illustration.
   - Intended for the future ending album slot and a 2.0s delayed dark overlay with scrolling narration.
+- `assets/endings/skeleton_ending_v1.png`
+  - Current skeleton race ending illustration.
+  - Used by the memory album and ending credit overlay.
+- `assets/endings/vampire_ending_v1.png`
+  - Current vampire race ending illustration.
+  - Used by the memory album and ending credit overlay.
+- `assets/endings/elf_ending_v1.png`
+  - Current elf race ending illustration.
+  - Used by the memory album and ending credit overlay.
+- `assets/endings/poop_ending_v1.png`
+  - Current poop monster race ending illustration.
+  - Used by the memory album and ending credit overlay.
+- `assets/endings/spirit_ending_v1.png`
+  - Current earth spirit race ending illustration.
+  - Used by the memory album and ending credit overlay.
 
 ## Current Important Settings
 
@@ -55,7 +70,12 @@ Keep this structure when uploading to GitHub/GitHub Pages or similar static host
 └─ assets/
    ├─ balance_data.js
    ├─ endings/
-   │  └─ human_ending_v1.png
+   │  ├─ human_ending_v1.png
+   │  ├─ skeleton_ending_v1.png
+   │  ├─ vampire_ending_v1.png
+   │  ├─ elf_ending_v1.png
+   │  ├─ poop_ending_v1.png
+   │  └─ spirit_ending_v1.png
    └─ extracted/
       ├─ asset_00.png
       ├─ asset_01.png
@@ -81,6 +101,7 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - Final boss victory now stores `state.clearSummary` and renders `#clear-record` with final race, level, rebirth count, HP/ATK, and traits.
   - Final clear logs use a dedicated Eclipse Queen ending message before setting `state.cleared`.
   - Restart button text is `새 윤회 시작`; restart clears the ending summary and closes DEV controls.
+  - The final clear screen has both `타이틀로` and `새 윤회 시작` actions; returning to title preserves the saved clear state.
   - Clear screen layout uses a tighter 4/8/12px spacing rhythm:
     - `status-banner` and `trait-banner` are grouped inside `#meta-group`.
     - the clear illustration, title/copy, record card, and CTA are aligned to the same full-width column.
@@ -146,10 +167,11 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - `기억의 앨범` now opens a dedicated mobile album overlay (`#album-overlay`) instead of a generic event modal.
   - The album frame uses a dark fantasy panel style with a header, internal scroll body, and no page navigation buttons.
   - Ending slots are arranged in a 2-column scroll grid for mobile.
-  - The human slot is currently unlocked and displays `assets/endings/human_ending_v1.png`.
-  - Clicking the human slot opens `#ending-credit-overlay`, showing the human ending art first, then a delayed dark scrim and scrolling narration.
-  - The remaining race slots are locked placeholders.
-  - Future work: connect clear records and race-specific ending images to these slots.
+  - Ending unlocks are stored separately in `localStorage` under `reincarnationRpgEndingUnlocksV1`.
+  - A race slot stays locked, image-hidden, and unclickable until that race clears stage 10 for the first time.
+  - Currently implemented ending credit assets: all six playable races.
+  - Clicking an unlocked ending slot opens `#ending-credit-overlay`, showing the ending art first, then a delayed dark scrim and scrolling narration.
+  - Future work: connect richer clear records to each unlocked album slot.
 - Auto save:
   - Current progress is stored in `localStorage` under `reincarnationRpgSaveV1`.
   - Saving happens only after the title has been dismissed and when no combat/intervention event is active.
