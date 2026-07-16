@@ -28,6 +28,9 @@ The game is a Korean reincarnation RPG. The player hunts monsters, levels up, fi
   - Previous final clear screen image, kept as a backup.
 - `Title_img_v1.png`
   - Current title screen key visual. Must remain next to the HTML file unless the title CSS path is updated.
+- `assets/endings/human_ending_v1.png`
+  - Current human race ending illustration.
+  - Intended for the future ending album slot and a 2.0s delayed dark overlay with scrolling narration.
 
 ## Current Important Settings
 
@@ -51,6 +54,8 @@ Keep this structure when uploading to GitHub/GitHub Pages or similar static host
 ├─ Clear_img.png
 └─ assets/
    ├─ balance_data.js
+   ├─ endings/
+   │  └─ human_ending_v1.png
    └─ extracted/
       ├─ asset_00.png
       ├─ asset_01.png
@@ -141,7 +146,9 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - `기억의 앨범` now opens a dedicated mobile album overlay (`#album-overlay`) instead of a generic event modal.
   - The album frame uses a dark fantasy panel style with a header, internal scroll body, and no page navigation buttons.
   - Ending slots are arranged in a 2-column scroll grid for mobile.
-  - Current slots are locked placeholders for the 6 playable races.
+  - The human slot is currently unlocked and displays `assets/endings/human_ending_v1.png`.
+  - Clicking the human slot opens `#ending-credit-overlay`, showing the human ending art first, then a delayed dark scrim and scrolling narration.
+  - The remaining race slots are locked placeholders.
   - Future work: connect clear records and race-specific ending images to these slots.
 - Auto save:
   - Current progress is stored in `localStorage` under `reincarnationRpgSaveV1`.

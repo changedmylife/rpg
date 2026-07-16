@@ -328,6 +328,33 @@ document.currentScript.after(link);
       rgba(0,0,0,0.44);
     box-shadow:inset 0 0 22px rgba(0,0,0,0.5);
   }
+  .album-slot.unlocked {
+    border-color:rgba(250,199,117,0.58);
+    background:#05060b;
+    box-shadow:0 0 18px rgba(250,199,117,0.12), inset 0 0 18px rgba(0,0,0,0.48);
+    cursor:pointer;
+  }
+  .album-slot.unlocked:focus-visible {
+    outline:2px solid rgba(250,199,117,0.78);
+    outline-offset:3px;
+  }
+  .album-slot-img {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    transform:scale(1.02);
+  }
+  .album-slot.unlocked::after {
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      linear-gradient(to top, rgba(0,0,0,0.86), transparent 38%),
+      linear-gradient(180deg, rgba(250,199,117,0.18), transparent 22%);
+    pointer-events:none;
+  }
   .album-slot.locked::before {
     content:"";
     position:absolute;
@@ -350,12 +377,17 @@ document.currentScript.after(link);
     left:0;
     right:0;
     bottom:0;
+    z-index:2;
     padding:7px 6px;
     background:linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
     color:rgba(255,255,255,0.76);
     font-size:10.5px;
     font-weight:700;
     text-align:center;
+  }
+  .album-slot.unlocked .album-slot-label {
+    color:#fff;
+    text-shadow:0 1px 8px rgba(0,0,0,0.9);
   }
   .album-empty {
     margin-top:10px;
@@ -366,6 +398,105 @@ document.currentScript.after(link);
     font-size:11px;
     line-height:1.45;
     text-align:center;
+  }
+  #ending-credit-overlay {
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1200;
+    overflow:hidden;
+    background:#000;
+  }
+  #ending-credit-overlay.is-open { display:block; }
+  .ending-credit-bg {
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    opacity:0;
+    transform:scale(1.035);
+  }
+  #ending-credit-overlay.is-playing .ending-credit-bg {
+    animation:endingImageIn 0.8s ease-out forwards;
+  }
+  .ending-credit-scrim {
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.68);
+    opacity:0;
+  }
+  #ending-credit-overlay.is-playing .ending-credit-scrim {
+    animation:endingScrimIn 0.75s ease-out 2s forwards;
+  }
+  .ending-credit-scroll {
+    position:absolute;
+    left:50%;
+    top:100%;
+    width:min(82%, 420px);
+    transform:translateX(-50%);
+    color:rgba(255,255,255,0.92);
+    font-size:clamp(14px, 3.65vw, 18px);
+    line-height:1.95;
+    letter-spacing:0;
+    text-align:left;
+    text-shadow:0 2px 10px rgba(0,0,0,0.92);
+    white-space:pre-line;
+    opacity:0;
+    pointer-events:none;
+  }
+  #ending-credit-overlay.is-playing .ending-credit-scroll {
+    animation:endingCreditRoll 58s linear 2.55s forwards;
+  }
+  .ending-credit-close {
+    position:absolute;
+    right:calc(12px + env(safe-area-inset-right));
+    top:calc(12px + env(safe-area-inset-top));
+    z-index:2;
+    width:34px;
+    height:34px;
+    min-height:0;
+    padding:0;
+    border-radius:8px;
+    background:rgba(0,0,0,0.48);
+    border-color:rgba(255,255,255,0.18);
+    color:rgba(255,255,255,0.88);
+    font-size:18px;
+    backdrop-filter:blur(4px);
+  }
+  .ending-credit-hint {
+    position:absolute;
+    left:50%;
+    bottom:calc(12px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    z-index:2;
+    padding:5px 9px;
+    border-radius:999px;
+    background:rgba(0,0,0,0.38);
+    color:rgba(255,255,255,0.58);
+    font-size:10px;
+    opacity:0;
+  }
+  #ending-credit-overlay.is-playing .ending-credit-hint {
+    animation:endingHintIn 0.5s ease-out 3s forwards;
+  }
+  @keyframes endingImageIn {
+    from { opacity:0; transform:scale(1.035); }
+    to { opacity:1; transform:scale(1); }
+  }
+  @keyframes endingScrimIn {
+    from { opacity:0; }
+    to { opacity:1; }
+  }
+  @keyframes endingCreditRoll {
+    0% { opacity:0; transform:translate(-50%, 0); }
+    4% { opacity:1; }
+    94% { opacity:1; }
+    100% { opacity:0; transform:translate(-50%, calc(-100% - 112vh)); }
+  }
+  @keyframes endingHintIn {
+    from { opacity:0; }
+    to { opacity:1; }
   }
 
   /* ── 스프라이트 애니메이션 ── */
@@ -869,16 +1000,26 @@ document.currentScript.after(link);
     <div class="album-body">
       <div class="album-desc">클리어한 종족의 마지막 생과 엔딩 이미지가 이곳에 기록됩니다.</div>
       <div class="album-grid" id="album-grid">
-        <div class="album-slot locked"><div class="album-slot-icon">🧑</div><div class="album-slot-label">인간</div></div>
+        <div class="album-slot unlocked" role="button" tabindex="0" onclick="showEndingCredits('human')" onkeydown="handleAlbumSlotKey(event, 'human')" aria-label="인간 엔딩 보기">
+          <img class="album-slot-img" src="assets/endings/human_ending_v1.png" alt="인간 엔딩">
+          <div class="album-slot-label">인간</div>
+        </div>
         <div class="album-slot locked"><div class="album-slot-icon">💀</div><div class="album-slot-label">스켈레톤</div></div>
         <div class="album-slot locked"><div class="album-slot-icon">🧛</div><div class="album-slot-label">흡혈귀</div></div>
         <div class="album-slot locked"><div class="album-slot-icon">💩</div><div class="album-slot-label">응아 몬스터</div></div>
         <div class="album-slot locked"><div class="album-slot-icon">🌿</div><div class="album-slot-label">대지의 정령</div></div>
         <div class="album-slot locked"><div class="album-slot-icon">🧝</div><div class="album-slot-label">엘프</div></div>
       </div>
-      <div class="album-empty">아직 열린 기억이 없습니다. 10스테이지를 클리어하면 이곳에 첫 기록이 남습니다.</div>
+      <div class="album-empty">인간의 마지막 기억이 기록되었습니다. 다른 종족의 엔딩은 이후 순차적으로 추가됩니다.</div>
     </div>
   </div>
+</div>
+<div id="ending-credit-overlay" aria-hidden="true">
+  <img id="ending-credit-bg" class="ending-credit-bg" src="" alt="">
+  <div class="ending-credit-scrim"></div>
+  <button class="ending-credit-close" onclick="closeEndingCredits()" aria-label="엔딩 닫기">×</button>
+  <div id="ending-credit-scroll" class="ending-credit-scroll"></div>
+  <div class="ending-credit-hint">닫기 버튼으로 앨범으로 돌아가기</div>
 </div>
 <div id="ui-wrap">
 
@@ -1431,6 +1572,59 @@ function showAlbumPreview() {
 function closeAlbumPreview() {
   const overlay = document.getElementById('album-overlay');
   if (overlay) overlay.style.display = 'none';
+}
+
+const ENDING_CREDITS = {
+  human: {
+    image:'assets/endings/human_ending_v1.png',
+    alt:'인간 엔딩',
+    narration:`신의 몸이 무너져 내렸다. 소리는 없었다. 다만 수천 년 동안 던전의 천장을 대신하던 그 거대한 왜곡이 유리 가루처럼 흩어지며, 그 틈으로 처음 보는 빛이 쏟아졌다.
+
+그는 그것이 무엇인지 한참 동안 알아보지 못했다. 햇빛. 삼백서른일곱 번의 생을 사는 동안 단 한 번도 닿지 못한 것.
+
+무릎이 꺾였지만 쓰러지지는 않았다. 부러진 검을 지팡이 삼아 한 걸음, 또 한 걸음. 발밑에는 이전 생의 그가 죽었던 자리들이 있었다. 첫 번째 생의 겁에 질린 소년이, 백열두 번째 생의 오만했던 마법사가, 이백 번째 생의 모든 것을 포기했던 노인이. 그 위를 지금의 그가 걸어서 지나갔다.
+
+출구는 문이 아니었다. 신이 사라지자 던전 그 자체가 존재할 이유를 잃고, 벽이 안개처럼 옅어지고 있을 뿐이었다. 경계에 서서 그는 딱 한 번 뒤를 돌아봤다. 무너지는 어둠 속, 아무것도 없는 그곳에.
+
+"……오래 걸렸네."
+
+목소리가 갈라졌다. 이번 생에서 말을 해본 게 얼마 만인지 기억나지 않았다.
+
+"너희 몫까지 다 기억하고 있어. 전부."
+
+그는 앞으로 걸음을 내디뎠다. 빛이 그를 삼켰고, 등 뒤에서 삼백서른일곱 개의 무덤이 조용히 닫혔다.
+
+바람 냄새가 났다. 그는 그 자리에 주저앉아, 처음으로 울었다.`
+  }
+};
+
+function showEndingCredits(endingId) {
+  const credit = ENDING_CREDITS[endingId];
+  const overlay = document.getElementById('ending-credit-overlay');
+  const bg = document.getElementById('ending-credit-bg');
+  const scroll = document.getElementById('ending-credit-scroll');
+  if (!credit || !overlay || !bg || !scroll) return;
+  bg.src = credit.image;
+  bg.alt = credit.alt;
+  scroll.textContent = credit.narration;
+  overlay.classList.remove('is-playing');
+  overlay.classList.add('is-open');
+  overlay.setAttribute('aria-hidden', 'false');
+  void overlay.offsetWidth;
+  overlay.classList.add('is-playing');
+}
+
+function closeEndingCredits() {
+  const overlay = document.getElementById('ending-credit-overlay');
+  if (!overlay) return;
+  overlay.classList.remove('is-open', 'is-playing');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function handleAlbumSlotKey(event, endingId) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  showEndingCredits(endingId);
 }
 
 function beginCombat(nextCombat) {
@@ -3041,6 +3235,9 @@ updateContinueButton();
 document.getElementById('clear-panel')?.addEventListener('pointerdown', skipClearAnimation);
 document.getElementById('album-overlay')?.addEventListener('click', e => {
   if (e.target.id === 'album-overlay') closeAlbumPreview();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeEndingCredits();
 });
 document.addEventListener('click', e => {
   const btn = e.target.closest('button');
