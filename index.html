@@ -237,6 +237,32 @@ document.currentScript.after(link);
   #event-popup .event-effect { color:#FAC775; font-size:12px; line-height:1.55; margin-bottom:14px; }
   #event-popup .event-choices { display:grid; gap:8px; }
   #event-popup .event-choices button { width:100%; text-align:left; padding:10px 12px; }
+  #ending-unlock-overlay {
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:1001;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(0,0,0,0.72);
+  }
+  #ending-unlock-popup {
+    width:min(360px, 92vw);
+    padding:18px;
+    border-radius:12px;
+    border:1px solid rgba(250,199,117,0.45);
+    background:
+      radial-gradient(circle at 50% 0%, rgba(250,199,117,0.16), transparent 45%),
+      linear-gradient(135deg, #121827 0%, #25182d 100%);
+    box-shadow:0 18px 48px rgba(0,0,0,0.58);
+    text-align:center;
+    animation:popupIn 0.34s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+  }
+  #ending-unlock-popup .unlock-label { color:#FAC775; font-size:11px; letter-spacing:0.14em; margin-bottom:8px; }
+  #ending-unlock-popup .unlock-title { color:#fff; font-size:20px; font-weight:800; margin-bottom:8px; }
+  #ending-unlock-popup .unlock-desc { color:rgba(255,255,255,0.74); font-size:12px; line-height:1.6; margin-bottom:14px; }
+  #ending-unlock-popup button { width:100%; padding:10px 12px; }
   #album-overlay {
     display:none;
     position:fixed;
@@ -388,6 +414,31 @@ document.currentScript.after(link);
   .album-slot.unlocked .album-slot-label {
     color:#fff;
     text-shadow:0 1px 8px rgba(0,0,0,0.9);
+  }
+  .album-slot-caption {
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:2;
+    padding:18px 7px 7px;
+    background:linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0));
+    text-align:center;
+  }
+  .album-slot-caption .album-slot-label {
+    position:static;
+    padding:0;
+    background:none;
+    color:#fff;
+    font-size:10.5px;
+    line-height:1.2;
+  }
+  .album-slot-record {
+    margin-top:3px;
+    color:rgba(250,199,117,0.82);
+    font-size:9px;
+    line-height:1.25;
+    text-shadow:0 1px 7px rgba(0,0,0,0.95);
   }
   .album-empty {
     margin-top:10px;
@@ -1058,6 +1109,14 @@ document.currentScript.after(link);
     <div class="event-choices" id="event-popup-choices"></div>
   </div>
 </div>
+<div id="ending-unlock-overlay" style="display:none;">
+  <div id="ending-unlock-popup">
+    <div class="unlock-label">MEMORY RECORDED</div>
+    <div class="unlock-title" id="ending-unlock-title">새 기억이 기록되었습니다</div>
+    <div class="unlock-desc" id="ending-unlock-desc"></div>
+    <button onclick="closeEndingUnlockPopup()">확인</button>
+  </div>
+</div>
         <span class="hud-bar-num" id="hp-text">30/30</span>
       </div>
       <div class="hud-bar-row">
@@ -1456,6 +1515,7 @@ function pickTrait() {
 
 const SAVE_KEY = 'reincarnationRpgSaveV1';
 const ENDING_UNLOCKS_KEY = 'reincarnationRpgEndingUnlocksV1';
+const ENDING_RECORDS_KEY = 'reincarnationRpgEndingRecordsV1';
 
 function createNewState() {
   const r = RACES[0];
@@ -1788,18 +1848,78 @@ function saveEndingUnlocks(unlocks) {
   } catch {}
 }
 
+function loadEndingRecords() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ENDING_RECORDS_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveEndingRecords(records) {
+  try {
+    localStorage.setItem(ENDING_RECORDS_KEY, JSON.stringify(records));
+  } catch {}
+}
+
+function saveEndingRecord(raceId, summary=createClearSummary()) {
+  if (!raceId || !ENDING_CREDITS[raceId]) return null;
+  const records = loadEndingRecords();
+  if (!records[raceId]) {
+    records[raceId] = {
+      ...summary,
+      raceId,
+      clearedAt: summary.clearedAt || new Date().toISOString(),
+    };
+    saveEndingRecords(records);
+  }
+  return records[raceId];
+}
+
 function unlockEnding(raceId) {
-  if (!raceId || !ENDING_CREDITS[raceId]) return;
+  if (!raceId || !ENDING_CREDITS[raceId]) return false;
   const unlocks = loadEndingUnlocks();
-  if (unlocks.has(raceId)) return;
+  if (unlocks.has(raceId)) return false;
   unlocks.add(raceId);
   saveEndingUnlocks(unlocks);
+  return true;
 }
 
 function syncCurrentClearToAlbum() {
   if (!state?.cleared) return;
   const raceId = RACES[state.raceIdx]?.id;
   unlockEnding(raceId);
+  saveEndingRecord(raceId, state.clearSummary || createClearSummary());
+}
+
+function formatAlbumDate(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit' });
+}
+
+function showEndingUnlockPopup(raceId) {
+  const race = RACES.find(r => r.id === raceId);
+  const overlay = document.getElementById('ending-unlock-overlay');
+  const title = document.getElementById('ending-unlock-title');
+  const desc = document.getElementById('ending-unlock-desc');
+  if (!race || !overlay || !title || !desc) return;
+  title.textContent = `${race.icon} ${race.name} 엔딩 해금`;
+  desc.textContent = `${race.name}의 마지막 기억이 앨범에 기록되었습니다. 타이틀의 기억의 앨범에서 다시 볼 수 있습니다.`;
+  overlay.style.display = 'flex';
+  const popup = document.getElementById('ending-unlock-popup');
+  if (popup) {
+    popup.style.animation = 'none';
+    void popup.offsetWidth;
+    popup.style.animation = 'popupIn 0.34s cubic-bezier(0.175,0.885,0.32,1.275) forwards';
+  }
+}
+
+function closeEndingUnlockPopup() {
+  const overlay = document.getElementById('ending-unlock-overlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 function renderAlbumSlots() {
@@ -1808,6 +1928,7 @@ function renderAlbumSlots() {
   if (!grid) return;
   syncCurrentClearToAlbum();
   const unlocks = loadEndingUnlocks();
+  const records = loadEndingRecords();
   let opened = 0;
   grid.innerHTML = '';
   ENDING_ALBUM_SLOTS.forEach(slot => {
@@ -1827,16 +1948,30 @@ function renderAlbumSlots() {
       img.src = credit.image;
       img.alt = `${slot.label} 엔딩`;
       el.appendChild(img);
+      const record = records[slot.id];
+      const caption = document.createElement('div');
+      caption.className = 'album-slot-caption';
+      const label = document.createElement('div');
+      label.className = 'album-slot-label';
+      label.textContent = slot.label;
+      caption.appendChild(label);
+      if (record) {
+        const meta = document.createElement('div');
+        meta.className = 'album-slot-record';
+        meta.textContent = `Lv.${record.level} · 환생 ${record.reborn}회${formatAlbumDate(record.clearedAt) ? ` · ${formatAlbumDate(record.clearedAt)}` : ''}`;
+        caption.appendChild(meta);
+      }
+      el.appendChild(caption);
     } else {
       const icon = document.createElement('div');
       icon.className = 'album-slot-icon';
       icon.textContent = slot.icon;
       el.appendChild(icon);
+      const label = document.createElement('div');
+      label.className = 'album-slot-label';
+      label.textContent = slot.label;
+      el.appendChild(label);
     }
-    const label = document.createElement('div');
-    label.className = 'album-slot-label';
-    label.textContent = slot.label;
-    el.appendChild(label);
     grid.appendChild(el);
   });
   if (status) {
