@@ -1797,7 +1797,7 @@ function playAttackSound(kind='slash') {
   osc.frequency.setValueAtTime(kind === 'magic' ? 660 : 520, now);
   osc.frequency.exponentialRampToValueAtTime(kind === 'magic' ? 980 : 150, now + 0.08);
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(kind === 'magic' ? 0.08 : 0.06, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(kind === 'magic' ? 0.12 : 0.09, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
@@ -1815,11 +1815,28 @@ function playHitSound(weight='normal') {
   osc.frequency.setValueAtTime(startFreq, now);
   osc.frequency.exponentialRampToValueAtTime(70, now + 0.09);
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(weight === 'heavy' ? 0.1 : 0.07, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(weight === 'heavy' ? 0.15 : 0.105, now + 0.008);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
   osc.connect(gain).connect(ctx.destination);
   osc.start(now);
   osc.stop(now + 0.15);
+}
+
+function playButtonSound() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(520, now);
+  osc.frequency.exponentialRampToValueAtTime(720, now + 0.04);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.06, now + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.08);
 }
 
 function updateCombatBar() {
@@ -2775,6 +2792,12 @@ if (initTrait.id === 'homebody') state.restLeft = MAX_REST * 2;
 if (initTrait.id === 'sturdy') { state.maxHp = Math.floor(state.maxHp * 1.5); state.hp = state.maxHp; }
 updateUI();
 document.getElementById('clear-panel')?.addEventListener('pointerdown', skipClearAnimation);
+document.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn || btn.disabled) return;
+  if (btn.closest('#combat-actions')) return;
+  playButtonSound();
+});
 // 초기 로그에 특성 표시
 setTimeout(() => {
   if (state.traits && state.traits[0]) log(`  ✨ 공용 특성 부여: ${state.traits.map(t=>t.icon+' '+t.name).join(', ')}`, 'rebirth');

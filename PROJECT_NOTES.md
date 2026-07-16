@@ -187,6 +187,9 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - No external audio assets are required.
   - Player normal attacks, human double attacks, and vampire Blood Thirst play attack sounds.
   - Successful enemy/player damage events play short hit sounds, with heavier hits for strong attacks.
+  - General UI buttons play a short click sound through `playButtonSound()`.
+  - Buttons inside `#combat-actions` do not play the UI click sound to avoid overlapping attack/skill combat sounds.
+  - Disabled buttons do not play click sounds.
 - Balance data externalization:
   - `RACES`, `MONSTERS`, `TRAITS`, `BOSSES`, `MAX_REST` moved to `assets/balance_data.js`.
 - Boss 3 sprite:
