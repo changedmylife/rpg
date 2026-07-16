@@ -22,8 +22,10 @@ The game is a Korean reincarnation RPG. The player hunts monsters, levels up, fi
 - `assets/extracted/`
   - Extracted image assets from the original inline/base64 HTML.
   - Includes boss sprites and mob sprite.
+- `Clear_img_v2.png`
+  - Current final clear screen image. Must remain next to the HTML file unless the HTML path is updated.
 - `Clear_img.png`
-  - Final clear screen image. Must remain next to the HTML file unless the HTML path is updated.
+  - Previous final clear screen image, kept as a backup.
 
 ## Current Important Settings
 
@@ -42,6 +44,7 @@ Keep this structure when uploading to GitHub/GitHub Pages or similar static host
 ```text
 /
 ├─ reincarnation_rpg_v2_no_duplicate_ids.html
+├─ Clear_img_v2.png
 ├─ Clear_img.png
 └─ assets/
    ├─ balance_data.js
@@ -65,10 +68,28 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
 - Mobile layout:
   - uses viewport/safe-area fixes and responsive combat sizing.
 - Final clear state:
-  - final boss victory shows a clear panel using `Clear_img.png`.
+  - final boss victory shows a clear panel using `Clear_img_v2.png`.
+  - `Clear_img_v2.png` is a newly generated dark fantasy eclipse ending illustration, designed to fit above the HTML-rendered clear record and restart button.
   - Final boss victory now stores `state.clearSummary` and renders `#clear-record` with final race, level, rebirth count, HP/ATK, and traits.
   - Final clear logs use a dedicated Eclipse Queen ending message before setting `state.cleared`.
   - Restart button text is `새 윤회 시작`; restart clears the ending summary and closes DEV controls.
+  - Clear screen layout uses a tighter 4/8/12px spacing rhythm:
+    - `status-banner` and `trait-banner` are grouped inside `#meta-group`.
+    - the clear illustration, title/copy, record card, and CTA are aligned to the same full-width column.
+    - clear restart CTA is rendered inside `#clear-panel` under the record card.
+    - the old `#btn-restart` remains for non-clear game-over flow only.
+  - Clear screen height is optimized to avoid scrolling on normal mobile viewports:
+    - `#game`/`#ui-wrap` use fixed viewport-height flex containment.
+    - `#battle-stage`, `#clear-panel`, `.clear-scene`, and `.clear-img` all allow shrinking with `min-height:0`.
+    - the ending image flexes to fill leftover space and shrink before text/card/button overflow.
+    - very small screens may still scroll inside `#clear-panel`, using a thin themed scrollbar.
+  - Clear screen entry animation:
+    - `.clear-img` fades/scales in first over about 0.72s.
+    - `.clear-title` appears after the image with fade + slide-up.
+    - `.clear-copy` follows with the same fade + slide-up.
+    - record card and CTA fade/slide in afterward for a softer finish.
+    - tapping/clicking `#clear-panel` calls `skipClearAnimation()` and snaps all elements to final state.
+    - reduced-motion users receive the final static state without animation.
 - Asset extraction:
   - large inline base64 assets were moved into `assets/extracted/`.
   - HTML should no longer contain large base64 blobs.
@@ -100,6 +121,10 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - `status-banner` shows day/night progress as `current tick / TIME_TICKS_PER_SHIFT`.
   - It also shows forced next intervention events, active combat intervention events, and temporary race state.
   - Temporary race battles mark the HUD race name with `*` and the battle player name with `(임시)`.
+- Info/help window:
+  - `showInfo()` now acts as a broader in-game rule reference.
+  - It covers basic progression, combat rules, day/night rules, intervention event chance/effects, races, shared traits, boss stages, clear records, and DEV panel notes.
+  - Event help is generated from `INTERVENTION_EVENT_TABLE` weights, with separate Korean effect descriptions in the HTML.
 - Vampire race and day/night:
   - `vampire` was added as a reincarnation race.
   - Vampire can appear in any boss rebirth pool only if the player died while holding the common `vampire` trait.
@@ -124,6 +149,14 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
   - Skeleton physical resistance only applies to physical boss attacks.
   - Skeleton magic weakness now applies to magical boss attacks.
   - Skeleton fear affects normal enemies by 20% and boss attacks by 15%.
+- Earth spirit balance:
+  - Earth spirit ATK increased from 6 to 7.
+  - Earth defense now starts earlier and scales as HP falls:
+    - 75% or lower: damage -2
+    - 50% or lower: damage -5
+    - 25% or lower: damage -9
+    - 10% or lower: damage -14
+  - Earth Barrier skill cooldown reduced from 5 turns to 4 turns.
 - Poop poison:
   - `독액` applies 4-turn poison.
   - Poison damage is `floor(maxEnemyHp * poisonTick * 0.04)`, so normal ticks are 4%, 8%, 12%, and 16% of enemy max HP.
@@ -133,6 +166,12 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
 - Combat async hardening:
   - combat uses `combatSeq`/`token`.
   - delayed combat callbacks use `scheduleCombat()` to avoid stale timers affecting new combats.
+- Combat log clarity:
+  - Enemy stun logs now use enemy action counts instead of ambiguous "turns".
+  - Defense stun application says "after this, enemy actions are canceled 2 times".
+  - Stun consumption logs whether the current enemy action was canceled and whether any additional action cancels remain.
+  - Enemy stun state is also shown visually with `#enemy-stun-bubble` near the enemy sprite.
+  - The bubble displays `xN`, matching the remaining enemy action cancellations stored in `combat.stunned`.
 - Balance data externalization:
   - `RACES`, `MONSTERS`, `TRAITS`, `BOSSES`, `MAX_REST` moved to `assets/balance_data.js`.
 - Boss 3 sprite:
@@ -163,6 +202,12 @@ The game avoids `fetch()` for balance data so it can work from static hosting an
     - `문블룸 페어리`: `mob_14.png`
     - `크리스탈 스프라이트`: `mob_15.png`
     - `헥스 크로우`: `mob_16.png`
+    - `스타폴 미믹`: `mob_17.png`
+    - `머쉬룸 세이지`: `mob_18.png`
+    - `데드우드 드라이어드`: `mob_19.png`
+    - `아스트럴 모스`: `mob_20.png`
+    - `벨벳 위치캣`: `mob_21.png`
+    - `에클립스 스펙터`: `mob_22.png`
   - Current normal monster sprite baseline is single-image breathing sprites at `96x116` canvas/display (`min(96px, 24vw)` by `min(116px, 29vw)`).
 - Boss 10 pattern:
   - Eclipse Queen now uses a phase-based mixed special pattern in `applyBossAttack()`.
